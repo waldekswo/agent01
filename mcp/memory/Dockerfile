@@ -1,18 +1,15 @@
-FROM node:20-alpine
-
+FROM node:20-alpine AS builder
 WORKDIR /app
-
-# Install dependencies
 COPY package*.json ./
-RUN npm install --omit=dev
-
-# Copy source
+RUN npm install
 COPY src ./src
 COPY tsconfig.json ./
-
-# Build
 RUN npm run build
 
-# Runtime
+FROM node:20-alpine AS runtime
+WORKDIR /app
+COPY package*.json ./
+RUN npm install --omit=dev
+COPY --from=builder /app/dist ./dist
 EXPOSE 3000
 CMD ["npm", "start"]
