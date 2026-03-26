@@ -17,8 +17,11 @@ export class TeamsBot extends TeamsActivityHandler {
     });
 
     this.onMembersAdded(async (context, next) => {
-      for (const member of context.activity.membersAdded) {
-        if (member.id !== context.activity.recipient.id) {
+      const membersAdded = context.activity.membersAdded ?? [];
+      const recipientId = context.activity.recipient?.id;
+
+      for (const member of membersAdded) {
+        if (member.id !== recipientId) {
           await context.sendActivity(`Welcome! I'm OpenClaw Agent.`);
         }
       }
