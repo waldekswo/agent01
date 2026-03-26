@@ -13,8 +13,8 @@ export async function initializeDatabase() {
     client = new CosmosClient({ endpoint, key });
 
     // Verify connection
-    const { databases } = await client.databases.readAll().fetchAll();
-    logger.info(`Connected to Cosmos DB. Found ${databases.length} database(s)`);
+    const { resources } = await client.databases.readAll().fetchAll();
+    logger.info(`Connected to Cosmos DB. Found ${resources.length} database(s)`);
 
     // Get or create database
     const { database: db } = await client.databases.createIfNotExists({ id: databaseId });
