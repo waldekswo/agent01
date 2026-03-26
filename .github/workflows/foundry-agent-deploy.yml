@@ -17,9 +17,6 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Setup Azure CLI & azd
-        uses: azure/setup-cli@v2
-
       - name: Azure Login
         uses: azure/login@v1
         with:
@@ -29,8 +26,8 @@ jobs:
 
       - name: Setup azd defaults
         run: |
-          azd config set defaults.subscription "${{ secrets.AZURE_SUBSCRIPTION_ID }}"
-          azd config set defaults.location "westeurope"
+            echo "azd not yet configured - future step"
+            echo "Subscription: ${{ secrets.AZURE_SUBSCRIPTION_ID }}"
 
       - name: Initialize/Provision Foundry Agent
         run: |
