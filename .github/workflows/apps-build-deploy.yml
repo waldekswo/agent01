@@ -66,7 +66,7 @@ jobs:
           docker build -f ${{ matrix.service.dockerfile }} \
             -t ${{ matrix.service.name }}:${{ github.sha }} \
             -t ${{ matrix.service.name }}:latest \
-            ${{ matrix.service.context }}
+            .
 
       - name: Push to ACR
         run: |
