@@ -71,6 +71,12 @@ jobs:
       - name: Push to ACR
         run: |
           ACR_NAME="${{ secrets.ACR_NAME }}"
+
+          if [ -z "$ACR_NAME" ]; then
+            echo "ACR_NAME secret is not set. Add the Azure Container Registry name in GitHub Actions secrets."
+            exit 1
+          fi
+
           az acr login --name "$ACR_NAME"
           
           docker tag ${{ matrix.service.name }}:latest \
@@ -80,6 +86,7 @@ jobs:
 
       - name: Create Summary
         run: |
+          ACR_NAME="${{ secrets.ACR_NAME }}"
           echo "## Build Summary ✅" >> $GITHUB_STEP_SUMMARY
           echo "- Service: ${{ matrix.service.name }}" >> $GITHUB_STEP_SUMMARY
           echo "- Image: ${ACR_NAME}.azurecr.io/${{ matrix.service.name }}:latest" >> $GITHUB_STEP_SUMMARY
