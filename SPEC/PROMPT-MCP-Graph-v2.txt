@@ -1,0 +1,5 @@
+TASK: Generate `mcp-graph` for Microsoft Graph email.
+Functions: draft_email -> {draftId}; send_email -> {messageId}. 
+Use DefaultAzureCredential; App perm Mail.Send; Application Access Policy to restrict mailboxes; store drafts in Cosmos `drafts`.
+Security: never call send without UMS.metadata.isApprovedAction=true.
+Project: src/index, src/graph/client, src/drafts/store, src/mcp/register; Dockerfile; tests; README.

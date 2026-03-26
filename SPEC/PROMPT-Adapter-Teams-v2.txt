@@ -1,0 +1,4 @@
+TASK: Generate Teams adapter (Bot Framework).
+- TeamsActivityHandler; map Activity -> UMS; Adaptive Card with Approve/Reject; submit -> UMS button.
+- Config: Azure Bot resource (App ID/Secret), endpoint /api/messages.
+- Files: src/bot, src/cards/approvalCard.json, src/ums/mapper, src/server; Dockerfile; tests.

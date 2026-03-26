@@ -1,0 +1,28 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Timeline Event",
+  "type": "object",
+  "required": ["type", "userId", "timestamp"],
+  "properties": {
+    "id": { "type": "string" },
+    "type": {
+      "type": "string",
+      "examples": [
+        "user.asked_question",
+        "agent.drafted_email",
+        "agent.sent_email",
+        "user.approved_action",
+        "user.rejected_action"
+      ]
+    },
+    "source": {
+      "type": "string",
+      "enum": ["telegram", "teams", "email", "schedule", "manual"]
+    },
+    "payload": { "type": "object" },
+    "labels": { "type": "array", "items": { "type": "string" } },
+    "userId": { "type": "string" },
+    "timestamp": { "type": "string", "format": "date-time" },
+    "pii": { "type": "boolean", "default": false }
+  }
+}

@@ -1,0 +1,187 @@
+version: '3.9'
+
+services:
+  # ============================================================
+  # Azure Cosmos DB Emulator (local development)
+  # ============================================================
+  cosmos-emulator:
+    image: mcr.microsoft.com/cosmosdb/linux/azure-cosmos-emulator:latest
+    ports:
+      - '8081:8081'
+    environment:
+      AZURE_COSMOS_EMULATOR_PARTITION_COUNT: 3
+      AZURE_COSMOS_EMULATOR_ENABLE_DATA_PERSISTENCE: 'false'
+    volumes:
+      - cosmos-data:/data/db
+    healthcheck:
+      test: ['CMD', 'curl', '-f', 'http://localhost:8081/_explorer/index.html']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ============================================================
+  # MCP-MEMORY Service
+  # ============================================================
+  mcp-memory:
+    build:
+      context: ./mcp/memory
+      dockerfile: Dockerfile
+    container_name: mcp-memory
+    ports:
+      - '3001:3000'
+    environment:
+      NODE_ENV: development
+      LOG_LEVEL: info
+      MCP_MEMORY_PORT: 3000
+      AZURE_COSMOS_ENDPOINT: http://cosmos-emulator:8081
+      AZURE_COSMOS_KEY: C2y6yDjf5/R+ob0N8A7Cgv30VRDJIWEHLM+4QDU5DE2nQ9nDuVTjZgSosaQS+/xQAfCkg4q/gMYHeP1z6f0PE7w==
+      COSMOS_DATABASE: openclaw-db
+    depends_on:
+      cosmos-emulator:
+        condition: service_healthy
+    healthcheck:
+      test: ['CMD', 'curl', '-f', 'http://localhost:3000/healthz']
+      interval: 10s
+      timeout: 5s
+      retries: 3
+    volumes:
+      - ./mcp/memory:/app
+      - /app/node_modules
+
+  # ============================================================
+  # MCP-GRAPH Service
+  # ============================================================
+  mcp-graph:
+    build:
+      context: ./mcp/graph
+      dockerfile: Dockerfile
+    container_name: mcp-graph
+    ports:
+      - '3002:3000'
+    environment:
+      NODE_ENV: development
+      LOG_LEVEL: info
+      MCP_GRAPH_PORT: 3000
+      AZURE_COSMOS_ENDPOINT: http://cosmos-emulator:8081
+      AZURE_COSMOS_KEY: C2y6yDjf5/R+ob0N8A7Cgv30VRDJIWEHLM+4QDU5DE2nQ9nDuVTjZgSosaQS+/xQAfCkg4q/gMYHeP1z6f0PE7w==
+      COSMOS_DATABASE: openclaw-db
+    depends_on:
+      cosmos-emulator:
+        condition: service_healthy
+    healthcheck:
+      test: ['CMD', 'curl', '-f', 'http://localhost:3000/healthz']
+      interval: 10s
+      timeout: 5s
+      retries: 3
+    volumes:
+      - ./mcp/graph:/app
+      - /app/node_modules
+
+  # ============================================================
+  # MCP-HTTP Service
+  # ============================================================
+  mcp-http:
+    build:
+      context: ./mcp/http
+      dockerfile: Dockerfile
+    container_name: mcp-http
+    ports:
+      - '3003:3000'
+    environment:
+      NODE_ENV: development
+      LOG_LEVEL: info
+      MCP_HTTP_PORT: 3000
+      HTTP_ALLOWLIST_URLS: 'https://api.example.com|https://graph.microsoft.com|http://localhost:3000|http://localhost:3001|http://localhost:3002'
+    healthcheck:
+      test: ['CMD', 'curl', '-f', 'http://localhost:3000/healthz']
+      interval: 10s
+      timeout: 5s
+      retries: 3
+    volumes:
+      - ./mcp/http:/app
+      - /app/node_modules
+
+  # ============================================================
+  # MCP-FILES Service
+  # ============================================================
+  mcp-files:
+    build:
+      context: ./mcp/files
+      dockerfile: Dockerfile
+    container_name: mcp-files
+    ports:
+      - '3004:3000'
+    environment:
+      NODE_ENV: development
+      LOG_LEVEL: info
+      MCP_FILES_PORT: 3000
+      MCP_FILES_BASE_PATH: /data/agent
+    volumes:
+      - ./data/agent:/data/agent
+      - ./mcp/files:/app
+      - /app/node_modules
+    healthcheck:
+      test: ['CMD', 'curl', '-f', 'http://localhost:3000/healthz']
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+  # ============================================================
+  # ADAPTER-TELEGRAM Service
+  # ============================================================
+  adapter-telegram:
+    build:
+      context: ./adapters/telegram
+      dockerfile: Dockerfile
+    container_name: adapter-telegram
+    ports:
+      - '3010:3000'
+    environment:
+      NODE_ENV: development
+      LOG_LEVEL: info
+      ADAPTER_TELEGRAM_PORT: 3000
+      TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN:-123456:ABC-DEF1234ghIkl-zyx57W2v1u123ew11}
+      PUBLIC_BASE_URL: ${TELEGRAM_PUBLIC_BASE_URL:-http://localhost:3010}
+      FOUNDRY_AGENT_ENDPOINT: http://host.docker.internal:5000
+      MCP_MEMORY_ENDPOINT: http://mcp-memory:3000
+      MCP_GRAPH_ENDPOINT: http://mcp-graph:3000
+    depends_on:
+      - mcp-memory
+      - mcp-graph
+    volumes:
+      - ./adapters/telegram:/app
+      - /app/node_modules
+
+  # ============================================================
+  # ADAPTER-TEAMS Service
+  # ============================================================
+  adapter-teams:
+    build:
+      context: ./adapters/teams
+      dockerfile: Dockerfile
+    container_name: adapter-teams
+    ports:
+      - '3011:3000'
+    environment:
+      NODE_ENV: development
+      LOG_LEVEL: info
+      ADAPTER_TEAMS_PORT: 3000
+      TEAMS_BOT_APP_ID: ${TEAMS_BOT_APP_ID:-00000000-0000-0000-0000-000000000000}
+      TEAMS_BOT_APP_PASSWORD: ${TEAMS_BOT_APP_PASSWORD:-password}
+      PUBLIC_BASE_URL: ${TEAMS_PUBLIC_BASE_URL:-http://localhost:3011}
+      FOUNDRY_AGENT_ENDPOINT: http://host.docker.internal:5000
+      MCP_MEMORY_ENDPOINT: http://mcp-memory:3000
+      MCP_GRAPH_ENDPOINT: http://mcp-graph:3000
+    depends_on:
+      - mcp-memory
+      - mcp-graph
+    volumes:
+      - ./adapters/teams:/app
+      - /app/node_modules
+
+volumes:
+  cosmos-data:
+
+networks:
+  default:
+    name: openclaw-network

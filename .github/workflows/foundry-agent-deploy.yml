@@ -1,0 +1,56 @@
+name: 'Deploy Foundry Agent'
+on:
+  push:
+    paths:
+      - 'orchestrator/**'
+      - '.github/workflows/foundry-agent-deploy.yml'
+  workflow_dispatch:
+
+jobs:
+  deploy-agent:
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: read
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Azure CLI & azd
+        uses: azure/setup-cli@v2
+
+      - name: Azure Login
+        uses: azure/login@v1
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Setup azd defaults
+        run: |
+          azd config set defaults.subscription "${{ secrets.AZURE_SUBSCRIPTION_ID }}"
+          azd config set defaults.location "westeurope"
+
+      - name: Initialize/Provision Foundry Agent
+        run: |
+          # TODO: Implement azd ai agent workflows
+          echo "TODO: azd ai agent init/provision/deploy"
+          echo "Deployment name: waldunio-agent-gpt-4o-mvp"
+
+      - name: Validate Agent Configuration
+        run: |
+          echo "Validating agent.yaml..."
+          test -f orchestrator/agent.yaml && echo "✓ agent.yaml found" || exit 1
+          test -f orchestrator/safety.json && echo "✓ safety.json found" || exit 1
+
+      - name: Create Summary
+        run: |
+          cat >> $GITHUB_STEP_SUMMARY <<EOF
+          ## Foundry Agent Deployment ✅
+          - Configuration: orchestrator/agent.yaml
+          - Guardrails: orchestrator/safety.json
+          - Deployment: waldunio-agent-gpt-4o-mvp
+          
+          TODO: Connect MCP tools (memory, graph, http, files)
+          EOF

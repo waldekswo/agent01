@@ -1,0 +1,12 @@
+OPENCLAW-INSPIRED AGENT (MVP) — MINIMAL SPEC FOR GITHUB COPILOT
+[Same as SPEC-Copilot-min.txt; use this as high-level context]
+
+Goal: Build a simplified OpenClaw-inspired multi-channel agent on Azure AI Foundry (Hosted Agent). 
+Scope: Telegram & Teams, human-in-the-loop email, persistent memory, Bicep + Actions, guardrails.
+UMS: channel, threadId, userId, messageType; optional text, attachments, metadata (locale, isApprovedAction, approval{draftId,action}).
+MCP: memory (record_event, upsert_fact, upsert_routine, query, delete), graph (draft_email, send_email), http, files.
+Hosted Agent: agent.yaml with tools + policies; enable content safety.
+Adapters: Telegram webhook + inline keyboard; Teams bot + Adaptive Card.
+IaC: main.bicep, cosmos.bicep, kv.bicep, ca-memory.bicep.
+CI/CD: infra-deploy.yml, apps-build-deploy.yml, foundry-agent-deploy.yml (OIDC).
+Acceptance: infra ok; memory ok; email draft→approve→send; adapters ok; guardrails on.

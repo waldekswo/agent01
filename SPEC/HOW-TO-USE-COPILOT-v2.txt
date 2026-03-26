@@ -1,0 +1,6 @@
+HOW TO USE THESE PROMPTS WITH GITHUB COPILOT
+1) Open repo in VS Code/Codespaces.
+2) Open a PROMPT-*.txt, select all, Ctrl+I (or Copilot Chat) -> "Generate code/files per this spec".
+3) Start from scaffolding, then implement functions, then tests/README.
+4) Keep SPEC-Copilot-min-v2.txt open as context.
+5) Push to trigger CI or run locally.

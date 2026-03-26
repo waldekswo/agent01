@@ -1,0 +1,6 @@
+TASK: Generate Bicep modules.
+- main.bicep (orchestration). 
+- cosmos.bicep (db + containers: timeline, facts, routines, stats, drafts). 
+- kv.bicep (Key Vault + secrets). 
+- ca-memory.bicep (Container Apps Env + mcp-memory app with MI + secrets + env vars).
+Conventions: parameters, outputs, tags; optional Private Endpoints.

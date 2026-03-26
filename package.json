@@ -1,0 +1,54 @@
+{
+  "name": "openclaw-mvp-foundry-agent",
+  "version": "0.1.0",
+  "description": "OpenClaw-inspired multi-channel agent on Azure AI Foundry (MVP)",
+  "private": true,
+  "engines": {
+    "node": ">=20.0.0",
+    "npm": ">=10.0.0"
+  },
+  "workspaces": [
+    "mcp/memory",
+    "mcp/graph",
+    "mcp/http",
+    "mcp/files",
+    "adapters/telegram",
+    "adapters/teams"
+  ],
+  "scripts": {
+    "install:all": "npm install && npm run install --workspaces",
+    "build": "npm run build --workspaces",
+    "test": "npm run test --workspaces",
+    "test:watch": "npm run test:watch --workspaces",
+    "lint": "npm run lint --workspaces && eslint . --ext .ts,.tsx",
+    "lint:fix": "npm run lint:fix --workspaces && eslint . --ext .ts,.tsx --fix",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "dev": "docker-compose -f docker-compose.yml up -d",
+    "dev:down": "docker-compose -f docker-compose.yml down",
+    "dev:logs": "docker-compose -f docker-compose.yml logs -f",
+    "infra:validate": "echo 'Run: az bicep build-params infra/main.bicepparam'",
+    "precommit": "npm run lint:fix && npm run format"
+  },
+  "devDependencies": {
+    "@types/node": "^20.11.0",
+    "@typescript-eslint/eslint-plugin": "^7.0.0",
+    "@typescript-eslint/parser": "^7.0.0",
+    "eslint": "^8.56.0",
+    "eslint-config-prettier": "^9.1.0",
+    "eslint-plugin-prettier": "^5.1.0",
+    "prettier": "^3.1.0",
+    "typescript": "^5.3.0"
+  },
+  "keywords": [
+    "openclaw",
+    "agent",
+    "azure",
+    "foundry",
+    "telegram",
+    "teams",
+    "mcp"
+  ],
+  "author": "waldekswo",
+  "license": "MIT"
+}

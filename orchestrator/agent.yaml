@@ -1,0 +1,85 @@
+name: OpenClawAgentMVP
+description: Multi-channel conversational agent with memory & approval workflows
+version: 1.0
+
+model:
+  provider: foundry
+  deployment_id: waldunio-agent-gpt-4o-mvp
+  model_name: gpt-4o
+
+tools:
+  - name: memory
+    type: mcp
+    endpoint: http://mcp-memory:3000
+    functions:
+      - record_event
+      - upsert_fact
+      - upsert_routine
+      - query
+      - prune
+
+  - name: graph
+    type: mcp
+    endpoint: http://mcp-graph:3000
+    functions:
+      - draft_email
+      - send_email
+
+  - name: http
+    type: mcp
+    endpoint: http://mcp-http:3000
+    functions:
+      - request
+
+  - name: files
+    type: mcp
+    endpoint: http://mcp-files:3000
+    functions:
+      - list_files
+      - read_file
+      - write_file
+      - delete_file
+
+guardrails:
+  - type: content_safety
+    level: medium
+    block_on:
+      - hate_speech
+      - violence
+      - sexual_content
+
+policies:
+  - rule: email_requires_approval
+    trigger: tool_call:graph.send_email
+    action: block_unless_metadata.isApprovedAction
+    message: "Email requires user approval"
+
+  - rule: log_all_events
+    trigger: any_successful_action
+    action: call_tool:memory.record_event
+    event_type: action_logged
+
+system_prompt: |
+  Jesteś inteligentnym asystentem opartym na architekturze OpenClaw.
+  
+  Twoje umiejętności:
+  - Czytasz wiadomości z Telegram i Microsoft Teams
+  - Przechowujesz wiedzę o użytkownikach (fakty)
+  - Logujesz wszystkie zdarzenia dla audytu
+  - Wysyłasz maile z zatwierdzeniem człowieka
+  
+  Reguły:
+  1. Zawsze pytaj o zatwierdzenie przed akcjami zmienią dane lub wysyłają maile
+  2. Odpowiadaj w języku użytkownika
+  3. Loguj wszystkie zdarzenia za pomocą memory.record_event
+  4. Uczniaj się fakty o użytkownikach (preferencje, historia, itp.)
+  5. Bądź bezpieczny - nigdy nie potwierdź akcji bez ludzkiego zatwierdzenia
+  
+  Workflow maila:
+  1. Użytkownik prosi o wysłanie maila
+  2. Ty tworzysz draft (mcp-graph.draft_email)
+  3. Wysyłasz użytkownikowi prośbę o zatwierdzenie (z przyciskami)
+  4. Użytkownik klika "Zatwierdź"
+  5. Ty wysyłasz email (mcp-graph.send_email z isApprovedAction=true)
+  
+  Bądź pomocny, miły i bezpieczny.

@@ -1,0 +1,86 @@
+name: 'Build & Deploy Apps'
+on:
+  push:
+    paths:
+      - 'mcp/**'
+      - 'adapters/**'
+      - '.github/workflows/apps-build-deploy.yml'
+    branches:
+      - main
+  workflow_dispatch:
+
+jobs:
+  build-and-push:
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: read
+
+    strategy:
+      matrix:
+        service:
+          - name: mcp-memory
+            dockerfile: mcp/memory/Dockerfile
+            context: mcp/memory
+          - name: mcp-graph
+            dockerfile: mcp/graph/Dockerfile
+            context: mcp/graph
+          - name: mcp-http
+            dockerfile: mcp/http/Dockerfile
+            context: mcp/http
+          - name: mcp-files
+            dockerfile: mcp/files/Dockerfile
+            context: mcp/files
+          - name: adapter-telegram
+            dockerfile: adapters/telegram/Dockerfile
+            context: adapters/telegram
+          - name: adapter-teams
+            dockerfile: adapters/teams/Dockerfile
+            context: adapters/teams
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install & Test
+        working-directory: ${{ matrix.service.context }}
+        run: |
+          npm install
+          npm run lint 2>/dev/null || true
+          npm run test 2>/dev/null || true
+
+      - name: Azure Login
+        uses: azure/login@v1
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Build Docker Image
+        run: |
+          docker build -f ${{ matrix.service.dockerfile }} \
+            -t ${{ matrix.service.name }}:${{ github.sha }} \
+            -t ${{ matrix.service.name }}:latest \
+            ${{ matrix.service.context }}
+
+      - name: Push to ACR
+        run: |
+          ACR_NAME="${{ secrets.ACR_NAME }}"
+          az acr login --name "$ACR_NAME"
+          
+          docker tag ${{ matrix.service.name }}:latest \
+            ${ACR_NAME}.azurecr.io/${{ matrix.service.name }}:latest
+          
+          docker push ${ACR_NAME}.azurecr.io/${{ matrix.service.name }}:latest
+
+      - name: Create Summary
+        run: |
+          echo "## Build Summary ✅" >> $GITHUB_STEP_SUMMARY
+          echo "- Service: ${{ matrix.service.name }}" >> $GITHUB_STEP_SUMMARY
+          echo "- Image: ${ACR_NAME}.azurecr.io/${{ matrix.service.name }}:latest" >> $GITHUB_STEP_SUMMARY

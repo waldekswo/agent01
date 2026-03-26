@@ -1,0 +1,190 @@
+
+================================================================================
+### SPECYFIKACJA-OpenClaw-Foundry-Agent-MVP-v2.md
+================================================================================
+
+# SPECYFIKACJA PROMPTU DLA GITHUB COPILOT (VS CODE)
+## Projekt: „OpenClaw‑Inspired Agent (MVP) na Azure AI Foundry (Hosted Agent)”
+
+**Cel:** Kompletny prompt/specyfikacja dla GitHub Copilot w VS Code, żeby wygenerować szkielety usług, IaC (Bicep), workflowy CI/CD i minimalne implementacje.  
+**Inspiracja:** **OpenClaw** — użyj go jako **odniesienia architektonicznego** (gateway+channels, persistent memory, skills/plugins), ale **nie kopiuj kodu**; budujemy **uprościone MVP** dla **Azure AI Foundry Hosted Agent + MCP**.
+
+### 1) Zakres MVP
+- Kanały: **Telegram** (webhook) i **Microsoft Teams** (Azure Bot Service + Adaptive Cards).
+- E‑maile: **draft → akceptacja → send** (human‑in‑the‑loop).
+- Pamięć: **mcp-memory** (zdarzenia → fakty/preferencje → rutyny) w **Cosmos DB**.
+- Orkiestracja: **Foundry Hosted Agent** + **MCP** (memory, graph, http, files); modele z **Foundry Models**.
+- IaC/CI: **Bicep** + **GitHub Actions** (OIDC do Azure). Guardrails/Content Safety aktywne.
+
+### 2) Architektura
+```
+[Telegram Adapter]   [Teams Adapter]
+        |                   |
+        +---- UMS (JSON) ---+
+                     |
+             [Foundry Hosted Agent]
+                     |
+           MCP: memory, graph, http, files
+                     |
+    Cosmos DB • Key Vault • Container Apps • ACR
+```
+
+### 3) Struktura repo (monorepo)
+```
+/.devcontainer/
+/.github/workflows/ (infra-deploy.yml, apps-build-deploy.yml, foundry-agent-deploy.yml)
+/infra/ (main.bicep, cosmos.bicep, kv.bicep, ca-memory.bicep)
+/adapters/telegram/  (src/, Dockerfile)
+/adapters/teams/     (src/, Dockerfile)
+/mcp/memory/         (src/, Dockerfile)
+/mcp/graph/          (src/, Dockerfile)
+/mcp/http/           (src/)
+/mcp/files/          (src/)
+/orchestrator/agent-config/ (agent.yaml, safety.json)
+/orchestrator/schemas/ (ums.schema.json, timeline_event.schema.json, fact.schema.json, routine.schema.json)
+```
+
+### 4) UMS (Unified Message Spec) — minimum
+- `channel`, `threadId`, `userId`, `messageType: text|command|button`  
+- `text?`, `attachments?[]`, `metadata.locale?`, `metadata.isApprovedAction?`, `metadata.approval? { draftId, action }`
+
+### 5) MCP — interfejsy
+**mcp-memory**
+- `memory.record_event({type,source?,payload,labels?,pii?}) -> {id}`
+- `memory.upsert_fact({subject,predicate,object,evidenceIds?,confidence?}) -> {id}`
+- `memory.upsert_routine({name,crontab?,window?,signals?,confidence?}) -> {id}`
+- `memory.query({kind,filter?,timeRange?,top?}) -> {items}`
+- `memory.delete({ids?,kind?,filter?}) -> {deleted}`
+
+**mcp-graph** (Microsoft Graph)
+- `draft_email({userId,to[],cc[]?,subject,body,attachments?[]}) -> {draftId}`
+- `send_email({draftId}) -> {messageId}`
+> Polityka: nigdy nie wołaj `send_email` bez `isApprovedAction=true` (UMS).
+
+**mcp-http**: bezpieczny fetch (allow‑list, limity).  
+**mcp-files**: dostęp do `/data/agent`.
+
+### 6) Hosted Agent (Foundry)
+`agent.yaml`:
+- Model z Foundry (np. GPT‑4o/5.x lub Sonnet) przez nazwę wdrożenia.
+- Tools: memory, graph, http, files.
+- Zasady: wysyłka maili wyłącznie po akceptacji; loguj zdarzenia przez memory.*; utrzymuj TTL/confidence.
+- Włącz **Content Safety/guardrails**.
+
+### 7) Adaptery
+**Telegram:** webhook `/webhook/telegram`; mapowanie Update→UMS; inline keyboard Approve/Reject.  
+**Teams:** Bot Framework (TeamsActivityHandler), Adaptive Card Approve/Reject; submit→UMS.
+
+### 8) IaC & CI/CD
+- **Bicep**: `main.bicep`, `cosmos.bicep` (timeline/facts/routines/stats/drafts), `kv.bicep`, `ca-memory.bicep`.
+- **Actions**:  
+  - `infra-deploy.yml`: `azure/login (OIDC)` + `Azure/bicep-deploy` (what‑if, create).  
+  - `apps-build-deploy.yml`: build & push obrazów do ACR; deploy Container Apps.  
+  - `foundry-agent-deploy.yml`: `azd ai agent init/provision/deploy`.
+
+### 9) Akceptacja
+- Infra: RG + Cosmos + KV + CA + ACR wdrożone.  
+- mcp-memory: zapis/odczyt eventów/faktów/rutyn.  
+- Email flow: draft → Approve/Reject → send (Graph 202).  
+- Adaptery: UMS działa; przyciski akceptacji działają.  
+- Guardrails aktywne.
+
+### 10) Polecenie końcowe dla Copilota
+> Wygeneruj monorepo (foldery, minimalny kod, Dockerfile, Bicep, workflowy) zgodnie z tą specyfikacją.  
+> Dodaj TODO i proste testy. Inspiruj się OpenClaw (architektura/patterny), ale utrzymaj prostotę.
+
+
+================================================================================
+### SPEC-Copilot-min-v2.txt
+================================================================================
+
+OPENCLAW-INSPIRED AGENT (MVP) — MINIMAL SPEC FOR GITHUB COPILOT
+[Same as SPEC-Copilot-min.txt; use this as high-level context]
+
+Goal: Build a simplified OpenClaw-inspired multi-channel agent on Azure AI Foundry (Hosted Agent). 
+Scope: Telegram & Teams, human-in-the-loop email, persistent memory, Bicep + Actions, guardrails.
+UMS: channel, threadId, userId, messageType; optional text, attachments, metadata (locale, isApprovedAction, approval{draftId,action}).
+MCP: memory (record_event, upsert_fact, upsert_routine, query, delete), graph (draft_email, send_email), http, files.
+Hosted Agent: agent.yaml with tools + policies; enable content safety.
+Adapters: Telegram webhook + inline keyboard; Teams bot + Adaptive Card.
+IaC: main.bicep, cosmos.bicep, kv.bicep, ca-memory.bicep.
+CI/CD: infra-deploy.yml, apps-build-deploy.yml, foundry-agent-deploy.yml (OIDC).
+Acceptance: infra ok; memory ok; email draft→approve→send; adapters ok; guardrails on.
+
+
+================================================================================
+### PROMPT-MCP-Memory-v2.txt
+================================================================================
+
+TASK: Generate `mcp-memory` (Node TS or Python). Store persistent memory in Cosmos DB.
+Functions: record_event, upsert_fact, upsert_routine, query, delete (see full spec). 
+Project: src/index, src/mcp/register, src/db/cosmos, src/models/*; Dockerfile; README; tests.
+Notes: JSON Schema validation; mask PII on read; log RU & duration; partitioning by userId.
+Deliverables: running service + examples + TODO for TTL/confidence decay and cron distillation.
+
+
+================================================================================
+### PROMPT-MCP-Graph-v2.txt
+================================================================================
+
+TASK: Generate `mcp-graph` for Microsoft Graph email.
+Functions: draft_email -> {draftId}; send_email -> {messageId}. 
+Use DefaultAzureCredential; App perm Mail.Send; Application Access Policy to restrict mailboxes; store drafts in Cosmos `drafts`.
+Security: never call send without UMS.metadata.isApprovedAction=true.
+Project: src/index, src/graph/client, src/drafts/store, src/mcp/register; Dockerfile; tests; README.
+
+
+================================================================================
+### PROMPT-Adapter-Telegram-v2.txt
+================================================================================
+
+TASK: Generate Telegram adapter (Node TS or Python).
+- /webhook/telegram; map Update -> UMS; render inline Approve/Reject; handle callback_query -> UMS button.
+- ENV: TELEGRAM_BOT_TOKEN; PUBLIC_BASE_URL.
+- Files: src/server, src/telegram/api, src/ums/mapper, src/renderers; Dockerfile; tests.
+
+
+================================================================================
+### PROMPT-Adapter-Teams-v2.txt
+================================================================================
+
+TASK: Generate Teams adapter (Bot Framework).
+- TeamsActivityHandler; map Activity -> UMS; Adaptive Card with Approve/Reject; submit -> UMS button.
+- Config: Azure Bot resource (App ID/Secret), endpoint /api/messages.
+- Files: src/bot, src/cards/approvalCard.json, src/ums/mapper, src/server; Dockerfile; tests.
+
+
+================================================================================
+### PROMPT-IaC-Bicep-v2.txt
+================================================================================
+
+TASK: Generate Bicep modules.
+- main.bicep (orchestration). 
+- cosmos.bicep (db + containers: timeline, facts, routines, stats, drafts). 
+- kv.bicep (Key Vault + secrets). 
+- ca-memory.bicep (Container Apps Env + mcp-memory app with MI + secrets + env vars).
+Conventions: parameters, outputs, tags; optional Private Endpoints.
+
+
+================================================================================
+### PROMPT-CI-CD-v2.txt
+================================================================================
+
+TASK: Generate GitHub Actions.
+- infra-deploy.yml: azure/login (OIDC), Azure/bicep-deploy (what-if, create).
+- apps-build-deploy.yml: build & push images to ACR; azure/container-apps-deploy-action.
+- foundry-agent-deploy.yml: setup azd; azd ai agent init/provision/deploy.
+Notes: prod environments with protections; cache docker builds; emit summary.
+
+
+================================================================================
+### HOW-TO-USE-COPILOT-v2.txt
+================================================================================
+
+HOW TO USE THESE PROMPTS WITH GITHUB COPILOT
+1) Open repo in VS Code/Codespaces.
+2) Open a PROMPT-*.txt, select all, Ctrl+I (or Copilot Chat) -> "Generate code/files per this spec".
+3) Start from scaffolding, then implement functions, then tests/README.
+4) Keep SPEC-Copilot-min-v2.txt open as context.
+5) Push to trigger CI or run locally.
+

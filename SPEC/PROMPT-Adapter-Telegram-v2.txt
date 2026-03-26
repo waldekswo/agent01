@@ -1,0 +1,4 @@
+TASK: Generate Telegram adapter (Node TS or Python).
+- /webhook/telegram; map Update -> UMS; render inline Approve/Reject; handle callback_query -> UMS button.
+- ENV: TELEGRAM_BOT_TOKEN; PUBLIC_BASE_URL.
+- Files: src/server, src/telegram/api, src/ums/mapper, src/renderers; Dockerfile; tests.

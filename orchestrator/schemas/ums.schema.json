@@ -1,0 +1,50 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "UMS (Unified Message Specification)",
+  "type": "object",
+  "required": ["channel", "threadId", "userId", "messageType"],
+  "properties": {
+    "channel": {
+      "type": "string",
+      "enum": ["telegram", "teams"],
+      "description": "Communication channel"
+    },
+    "threadId": {
+      "type": "string",
+      "description": "Conversation/thread identifier"
+    },
+    "userId": {
+      "type": "string",
+      "description": "User identifier"
+    },
+    "messageType": {
+      "type": "string",
+      "enum": ["text", "command", "button"],
+      "description": "Message type"
+    },
+    "text": {
+      "type": "string",
+      "description": "Message content"
+    },
+    "metadata": {
+      "type": "object",
+      "properties": {
+        "locale": {
+          "type": "string",
+          "default": "en"
+        },
+        "isApprovedAction": {
+          "type": "boolean",
+          "default": false
+        },
+        "approval": {
+          "type": "object",
+          "properties": {
+            "draftId": { "type": "string" },
+            "action": { "enum": ["approve", "reject"] }
+          }
+        }
+      }
+    }
+  }
+}

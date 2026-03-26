@@ -1,0 +1,30 @@
+{
+  "compilerOptions": {
+    "target": "ES2020",
+    "module": "commonjs",
+    "lib": ["ES2020"],
+    "outDir": "./dist",
+    "rootDir": "./",
+    "declaration": true,
+    "declarationMap": true,
+    "sourceMap": true,
+    "strict": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "forceConsistentCasingInFileNames": true,
+    "resolveJsonModule": true,
+    "moduleResolution": "node",
+    "allowSyntheticDefaultImports": true,
+    "baseUrl": ".",
+    "paths": {
+      "@mcp-memory/*": ["mcp/memory/src/*"],
+      "@mcp-graph/*": ["mcp/graph/src/*"],
+      "@mcp-http/*": ["mcp/http/src/*"],
+      "@mcp-files/*": ["mcp/files/src/*"],
+      "@adapter-telegram/*": ["adapters/telegram/src/*"],
+      "@adapter-teams/*": ["adapters/teams/src/*"]
+    }
+  },
+  "include": ["mcp/**/*.ts", "adapters/**/*.ts", "orchestrator/**/*.ts"],
+  "exclude": ["node_modules", "**/__tests__", "**/dist"]
+}

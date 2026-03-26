@@ -1,0 +1,5 @@
+TASK: Generate GitHub Actions.
+- infra-deploy.yml: azure/login (OIDC), Azure/bicep-deploy (what-if, create).
+- apps-build-deploy.yml: build & push images to ACR; azure/container-apps-deploy-action.
+- foundry-agent-deploy.yml: setup azd; azd ai agent init/provision/deploy.
+Notes: prod environments with protections; cache docker builds; emit summary.

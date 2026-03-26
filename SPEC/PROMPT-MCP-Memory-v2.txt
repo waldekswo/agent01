@@ -1,0 +1,5 @@
+TASK: Generate `mcp-memory` (Node TS or Python). Store persistent memory in Cosmos DB.
+Functions: record_event, upsert_fact, upsert_routine, query, delete (see full spec). 
+Project: src/index, src/mcp/register, src/db/cosmos, src/models/*; Dockerfile; README; tests.
+Notes: JSON Schema validation; mask PII on read; log RU & duration; partitioning by userId.
+Deliverables: running service + examples + TODO for TTL/confidence decay and cron distillation.

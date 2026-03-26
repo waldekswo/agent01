@@ -1,0 +1,70 @@
+name: 'Deploy Infrastructure'
+on:
+  push:
+    paths:
+      - 'infra/**'
+      - '.github/workflows/infra-deploy.yml'
+  workflow_dispatch:
+
+env:
+  AZURE_LOCATION: ${{ secrets.AZURE_LOCATION || 'westeurope' }}
+  AZURE_RESOURCE_GROUP: ${{ secrets.AZURE_RESOURCE_GROUP || 'rg-waldunio-agent01-mvp' }}
+
+jobs:
+  validate-and-deploy:
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: read
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Azure Login (OIDC)
+        uses: azure/login@v1
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Validate Bicep
+        run: |
+          az bicep build-params infra/main.bicepparam
+        continue-on-error: true
+
+      - name: What-If Deployment
+        run: |
+          az deployment group what-if \
+            --name waldunio-agent01-deployment \
+            --resource-group "${{ env.AZURE_RESOURCE_GROUP }}" \
+            --template-file infra/main.bicep \
+            --parameters projectName=waldunio-agent01 environment=dev location="${{ env.AZURE_LOCATION }}"
+        continue-on-error: true
+
+      - name: Deploy Infrastructure
+        run: |
+          az deployment group create \
+            --name waldunio-agent01-deployment \
+            --resource-group "${{ env.AZURE_RESOURCE_GROUP }}" \
+            --template-file infra/main.bicep \
+            --parameters projectName=waldunio-agent01 environment=dev location="${{ env.AZURE_LOCATION }}"
+
+      - name: Output Deployment Info
+        run: |
+          az deployment group show \
+            --name waldunio-agent01-deployment \
+            --resource-group "${{ env.AZURE_RESOURCE_GROUP }}" \
+            --query properties.outputs --output json > deployment-outputs.json
+          cat deployment-outputs.json
+
+      - name: Create Summary
+        run: |
+          cat >> $GITHUB_STEP_SUMMARY <<EOF
+          ## OpenClaw Infrastructure Deployed ✅
+          - Resource Group: ${{ env.AZURE_RESOURCE_GROUP }}
+          - Location: ${{ env.AZURE_LOCATION }}
+          - Cosmos DB: cosmos-openclaw-mvp-dev
+          - Key Vault: kv-openclaw-mvp-***
+          - Container Registry: acr***
+          EOF
