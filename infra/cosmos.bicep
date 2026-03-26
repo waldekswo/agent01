@@ -149,5 +149,4 @@ resource statsContainer 'Microsoft.DocumentDB/databaseAccounts/sqlDatabases/cont
 // OUTPUTS
 // ============================================================
 output endpoint string = cosmosDbAccount.properties.documentEndpoint
-output primaryKey string = cosmosDbAccount.listKeys().primaryMasterKey
 output databaseName string = database.name

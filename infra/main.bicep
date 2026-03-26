@@ -18,7 +18,7 @@ param tags object = {
 var resourceGroupName = 'rg-${projectName}-${environment}'
 var cosmosDbName = 'cosmos-${projectName}-${environment}'
 var keyVaultName = 'kv-${projectName}-${substring(uniqueString(resourceGroup().id), 0, 3)}'
-var acrName = 'acr${projectName}${substring(uniqueString(resourceGroup().id), 0, 4)}'
+var acrName = 'acr${substring(replace(toLower(projectName), '-', ''), 0, 15)}${substring(uniqueString(resourceGroup().id), 0, 6)}'
 var containerAppEnvName = 'cae-${projectName}-${environment}'
 
 // ============================================================
@@ -65,8 +65,6 @@ module containerApps 'ca-memory.bicep' = {
   params: {
     location: location
     containerAppEnvName: containerAppEnvName
-    cosmosDbEndpoint: cosmosDb.outputs.endpoint
-    cosmosDbKey: cosmosDb.outputs.primaryKey
     tags: tags
   }
 }

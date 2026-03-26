@@ -2,8 +2,6 @@ metadata description = 'Container Apps Environment + mcp-memory deployment'
 
 param location string
 param containerAppEnvName string
-param cosmosDbEndpoint string
-param cosmosDbKey string
 param tags object = {}
 
 // ============================================================
