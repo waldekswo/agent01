@@ -90,3 +90,141 @@ jobs:
           echo "## Build Summary ✅" >> $GITHUB_STEP_SUMMARY
           echo "- Service: ${{ matrix.service.name }}" >> $GITHUB_STEP_SUMMARY
           echo "- Image: ${ACR_NAME}.azurecr.io/${{ matrix.service.name }}:latest" >> $GITHUB_STEP_SUMMARY
+
+  deploy-mcp-services:
+    runs-on: ubuntu-latest
+    needs: build-and-push
+    permissions:
+      id-token: write
+      contents: read
+
+    env:
+      PROJECT_NAME: waldunio-agent01
+      DEPLOY_ENVIRONMENT: dev
+      AZURE_RESOURCE_GROUP: ${{ secrets.AZURE_RESOURCE_GROUP || 'rg-waldunio-agent01-mvp' }}
+      CONTAINERAPPS_ENV_NAME: ${{ secrets.CONTAINERAPPS_ENV_NAME || 'cae-waldunio-agent01-dev' }}
+      COSMOS_DATABASE: openclaw-db
+
+    strategy:
+      matrix:
+        service:
+          - mcp-memory
+          - mcp-graph
+          - mcp-http
+          - mcp-files
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Azure Login
+        uses: azure/login@v1
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Install Container Apps extension
+        run: |
+          az extension add --name containerapp --upgrade
+
+      - name: Resolve deployment variables
+        run: |
+          ACR_NAME="${{ secrets.ACR_NAME }}"
+          if [ -z "$ACR_NAME" ]; then
+            echo "ACR_NAME secret is not set. Add ACR_NAME in GitHub Actions secrets."
+            exit 1
+          fi
+
+          COSMOS_ACCOUNT_NAME="${{ secrets.COSMOS_ACCOUNT_NAME }}"
+          if [ -z "$COSMOS_ACCOUNT_NAME" ]; then
+            COSMOS_ACCOUNT_NAME="cosmos-${PROJECT_NAME}-${DEPLOY_ENVIRONMENT}"
+          fi
+
+          COSMOS_ENDPOINT=$(az cosmosdb show \
+            --resource-group "$AZURE_RESOURCE_GROUP" \
+            --name "$COSMOS_ACCOUNT_NAME" \
+            --query documentEndpoint -o tsv)
+
+          COSMOS_KEY=$(az cosmosdb keys list \
+            --resource-group "$AZURE_RESOURCE_GROUP" \
+            --name "$COSMOS_ACCOUNT_NAME" \
+            --query primaryMasterKey -o tsv)
+
+          ACR_USERNAME=$(az acr credential show \
+            --name "$ACR_NAME" \
+            --query username -o tsv)
+
+          ACR_PASSWORD=$(az acr credential show \
+            --name "$ACR_NAME" \
+            --query passwords[0].value -o tsv)
+
+          echo "::add-mask::$COSMOS_KEY"
+          echo "::add-mask::$ACR_PASSWORD"
+
+          echo "ACR_NAME=$ACR_NAME" >> "$GITHUB_ENV"
+          echo "COSMOS_ACCOUNT_NAME=$COSMOS_ACCOUNT_NAME" >> "$GITHUB_ENV"
+          echo "COSMOS_ENDPOINT=$COSMOS_ENDPOINT" >> "$GITHUB_ENV"
+          echo "COSMOS_KEY=$COSMOS_KEY" >> "$GITHUB_ENV"
+          echo "ACR_USERNAME=$ACR_USERNAME" >> "$GITHUB_ENV"
+          echo "ACR_PASSWORD=$ACR_PASSWORD" >> "$GITHUB_ENV"
+
+      - name: Deploy to Azure Container Apps
+        run: |
+          IMAGE="${ACR_NAME}.azurecr.io/${{ matrix.service }}:latest"
+          COMMON_ARGS="--name ${{ matrix.service }} --resource-group $AZURE_RESOURCE_GROUP --environment $CONTAINERAPPS_ENV_NAME --image $IMAGE --target-port 3000 --ingress external --registry-server ${ACR_NAME}.azurecr.io --registry-username $ACR_USERNAME --registry-password $ACR_PASSWORD"
+
+          case "${{ matrix.service }}" in
+            mcp-memory)
+              az containerapp up $COMMON_ARGS \
+                --env-vars \
+                  NODE_ENV=production \
+                  LOG_LEVEL=info \
+                  MCP_MEMORY_PORT=3000 \
+                  AZURE_COSMOS_ENDPOINT="$COSMOS_ENDPOINT" \
+                  AZURE_COSMOS_KEY="$COSMOS_KEY" \
+                  COSMOS_DATABASE="$COSMOS_DATABASE"
+              ;;
+            mcp-graph)
+              az containerapp up $COMMON_ARGS \
+                --env-vars \
+                  NODE_ENV=production \
+                  LOG_LEVEL=info \
+                  MCP_GRAPH_PORT=3000 \
+                  AZURE_COSMOS_ENDPOINT="$COSMOS_ENDPOINT" \
+                  AZURE_COSMOS_KEY="$COSMOS_KEY" \
+                  COSMOS_DATABASE="$COSMOS_DATABASE"
+              ;;
+            mcp-http)
+              az containerapp up $COMMON_ARGS \
+                --env-vars \
+                  NODE_ENV=production \
+                  LOG_LEVEL=info \
+                  MCP_HTTP_PORT=3000 \
+                  HTTP_ALLOWLIST_URLS='https://api.example.com|https://graph.microsoft.com'
+              ;;
+            mcp-files)
+              az containerapp up $COMMON_ARGS \
+                --env-vars \
+                  NODE_ENV=production \
+                  LOG_LEVEL=info \
+                  MCP_FILES_PORT=3000 \
+                  MCP_FILES_BASE_PATH=/data/agent
+              ;;
+            *)
+              echo "Unknown service: ${{ matrix.service }}"
+              exit 1
+              ;;
+          esac
+
+      - name: Create Deployment Summary
+        run: |
+          FQDN=$(az containerapp show \
+            --name "${{ matrix.service }}" \
+            --resource-group "$AZURE_RESOURCE_GROUP" \
+            --query properties.configuration.ingress.fqdn -o tsv)
+
+          echo "## MCP Deploy Summary ✅" >> $GITHUB_STEP_SUMMARY
+          echo "- Service: ${{ matrix.service }}" >> $GITHUB_STEP_SUMMARY
+          echo "- Image: ${ACR_NAME}.azurecr.io/${{ matrix.service }}:latest" >> $GITHUB_STEP_SUMMARY
+          echo "- URL: https://$FQDN" >> $GITHUB_STEP_SUMMARY

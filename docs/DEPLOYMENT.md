@@ -56,13 +56,27 @@ az acr repository list --resource-group rg-openclaw-mvp --name acr**
 ### Deploy to Container Apps
 
 ```bash
-# TODO: Implement Container Apps deployment
-az container app create \
-  --name mcp-memory \
-  --resource-group rg-openclaw-mvp \
-  --image acr***.azurecr.io/mcp-memory:latest \
-  --target-port 3000
+# Trigger deploy job in apps-build-deploy.yml (automatic after build)
+git push origin main
+
+# Optional manual trigger
+# GitHub -> Actions -> Build & Deploy Apps -> Run workflow
+
+# Verify MCP apps in Azure
+az containerapp list \
+  --resource-group rg-waldunio-agent01-mvp \
+  --query "[].{name:name,fqdn:properties.configuration.ingress.fqdn}" \
+  --output table
 ```
+
+Required GitHub Secrets for this phase:
+- `AZURE_SUBSCRIPTION_ID`
+- `AZURE_TENANT_ID`
+- `AZURE_CLIENT_ID`
+- `AZURE_RESOURCE_GROUP` (default: `rg-waldunio-agent01-mvp`)
+- `ACR_NAME`
+- `CONTAINERAPPS_ENV_NAME` (default: `cae-waldunio-agent01-dev`)
+- `COSMOS_ACCOUNT_NAME` (optional; default derived from naming convention)
 
 ## Phase 3: Channel Adapters (Week 4)
 
