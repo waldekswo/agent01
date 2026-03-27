@@ -1,4 +1,4 @@
-import { messageToUMS } from '../../src/ums-mapper';
+import { messageToUMS } from '../src/ums-mapper';
 
 describe('Telegram UMS Mapper', () => {
   it('converts message to UMS', () => {

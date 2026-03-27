@@ -1,4 +1,4 @@
-import { messageToUMS } from '../../src/ums-mapper';
+import { messageToUMS } from '../src/ums-mapper';
 
 describe('Teams UMS Mapper', () => {
   it('converts activity to UMS', () => {
