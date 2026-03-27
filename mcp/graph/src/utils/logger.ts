@@ -1,15 +1,20 @@
 import pino from 'pino';
 
 const level = process.env.LOG_LEVEL || 'info';
+const isDev = process.env.NODE_ENV !== 'production';
 
-export const logger = pino({
-  level,
-  transport: {
-    target: 'pino-pretty',
-    options: {
-      colorize: true,
-      translateTime: 'SYS:standard',
-      ignore: 'pid,hostname',
-    },
-  },
-});
+const config = isDev
+  ? {
+      level,
+      transport: {
+        target: 'pino-pretty',
+        options: {
+          colorize: true,
+          translateTime: 'SYS:standard',
+          ignore: 'pid,hostname',
+        },
+      },
+    }
+  : { level };
+
+export const logger = pino(config);
