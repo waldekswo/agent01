@@ -103,7 +103,7 @@ jobs:
       DEPLOY_ENVIRONMENT: dev
       AZURE_RESOURCE_GROUP: ${{ secrets.AZURE_RESOURCE_GROUP || 'rg-waldunio-agent01-mvp' }}
       CONTAINERAPPS_ENV_NAME: ${{ secrets.CONTAINERAPPS_ENV_NAME || 'cae-waldunio-agent01-dev' }}
-      COSMOS_DATABASE: openclaw-db
+      COSMOS_DATABASE: malgosha-db
       KV_NAME: ${{ secrets.KV_NAME || 'kv-waldunio-agent01-buw' }}
 
     strategy:

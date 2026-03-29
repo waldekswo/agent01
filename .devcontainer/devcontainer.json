@@ -1,5 +1,5 @@
 {
-  "name": "OpenClaw MVP Agent Dev",
+  "name": "Malgosha Agent Dev",
   "image": "mcr.microsoft.com/devcontainers/typescript-node:20-bookworm",
   "features": {
     "ghcr.io/devcontainers/features/azure-cli:1": {},

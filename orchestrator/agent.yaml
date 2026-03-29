@@ -1,4 +1,4 @@
-name: OpenClawAgentMVP
+name: MalgoshaAgentMVP
 description: Multi-channel conversational agent with memory & approval workflows
 version: 1.0
 
@@ -60,7 +60,7 @@ policies:
     event_type: action_logged
 
 system_prompt: |
-  Jesteś inteligentnym asystentem opartym na architekturze OpenClaw.
+  Jesteś inteligentnym asystentem Malgosha.
   
   Twoje umiejętności:
   - Czytasz wiadomości z Telegram i Microsoft Teams

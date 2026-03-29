@@ -1,6 +1,6 @@
 # Adapter: Teams
 
-Microsoft Teams Bot Framework adapter for OpenClaw Agent.
+Microsoft Teams Bot Framework adapter for Malgosha Agent.
 
 ## Setup
 

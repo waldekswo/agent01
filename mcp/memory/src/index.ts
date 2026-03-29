@@ -39,7 +39,7 @@ async function startServer() {
     // Root endpoint
     app.get('/', (_req: Request, res: Response) => {
       res.json({
-        service: '@openclaw/mcp-memory',
+        service: '@malgosha/mcp-memory',
         version: '0.1.0',
         status: 'ready',
         endpoints: [

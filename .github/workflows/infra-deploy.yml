@@ -62,10 +62,10 @@ jobs:
       - name: Create Summary
         run: |
           cat >> $GITHUB_STEP_SUMMARY <<EOF
-          ## OpenClaw Infrastructure Deployed ✅
+          ## Malgosha Infrastructure Deployed ✅
           - Resource Group: ${{ env.AZURE_RESOURCE_GROUP }}
           - Location: ${{ env.AZURE_LOCATION }}
-          - Cosmos DB: cosmos-openclaw-mvp-dev
-          - Key Vault: kv-openclaw-mvp-***
+          - Cosmos DB: cosmos-waldunio-agent01-dev
+          - Key Vault: kv-waldunio-agent01-***
           - Container Registry: acr***
           EOF

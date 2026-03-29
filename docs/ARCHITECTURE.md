@@ -1,4 +1,4 @@
-# OpenClaw MVP Agent — Architecture
+# Malgosha Agent — Architecture
 
 Kompletna architektura wielokanałowego agenta konwersacyjnego na Azure AI Foundry.
 

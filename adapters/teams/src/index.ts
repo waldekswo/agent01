@@ -44,7 +44,7 @@ app.get('/healthz', (_req: Request, res: Response) => {
 
 app.get('/', (_req: Request, res: Response) => {
   res.json({
-    service: '@openclaw/adapter-teams',
+    service: '@malgosha/adapter-teams',
     version: '0.1.0',
     status: 'ready',
     endpoint: 'POST /api/messages',

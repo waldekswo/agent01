@@ -1,5 +1,5 @@
 {
-  "name": "@openclaw/mcp-memory",
+  "name": "@malgosha/mcp-memory",
   "version": "0.1.0",
   "description": "MCP Service for persistent memory (timeline, facts, routines) on Cosmos DB",
   "private": true,

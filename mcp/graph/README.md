@@ -1,6 +1,6 @@
 # mcp-graph
 
-Microsoft Graph email service for OpenClaw Agent. Manages email drafts and sending with approval workflow.
+Microsoft Graph email service for Malgosha Agent. Manages email drafts and sending with approval workflow.
 
 ## Quick Start
 

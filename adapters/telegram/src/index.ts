@@ -47,7 +47,7 @@ app.get('/healthz', (_req: Request, res: Response) => {
 
 app.get('/', (_req: Request, res: Response) => {
   res.json({
-    service: '@openclaw/adapter-telegram',
+    service: '@malgosha/adapter-telegram',
     version: '0.1.0',
     status: 'ready',
     webhook: `${PUBLIC_BASE_URL}/webhook/telegram`,

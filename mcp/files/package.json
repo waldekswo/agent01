@@ -1,5 +1,5 @@
 {
-  "name": "@openclaw/mcp-files",
+  "name": "@malgosha/mcp-files",
   "version": "0.1.0",
   "description": "MCP Service for safe file operations",
   "private": true,

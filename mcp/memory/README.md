@@ -1,6 +1,6 @@
 # mcp-memory
 
-Persistent memory service for OpenClaw Agent. Stores events, facts, and routines in Azure Cosmos DB.
+Persistent memory service for Malgosha Agent. Stores events, facts, and routines in Azure Cosmos DB.
 
 ## Quick Start
 

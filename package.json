@@ -1,7 +1,7 @@
 {
-  "name": "openclaw-mvp-foundry-agent",
+  "name": "malgosha-foundry-agent",
   "version": "0.1.0",
-  "description": "OpenClaw-inspired multi-channel agent on Azure AI Foundry (MVP)",
+  "description": "Malgosha — multi-channel AI agent on Azure AI Foundry (MVP)",
   "private": true,
   "engines": {
     "node": ">=20.0.0",
@@ -43,7 +43,7 @@
     "typescript": "^5.3.0"
   },
   "keywords": [
-    "openclaw",
+    "malgosha",
     "agent",
     "azure",
     "foundry",

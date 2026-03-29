@@ -1,5 +1,5 @@
 {
-  "name": "@openclaw/mcp-graph",
+  "name": "@malgosha/mcp-graph",
   "version": "0.1.0",
   "description": "MCP Service for Microsoft Graph email operations (draft & send)",
   "private": true,

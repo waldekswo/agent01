@@ -18,7 +18,7 @@ API_KEY="${2:?'ERROR: OpenAI API key is required as second argument'}"
 
 API_VERSION="2024-05-01-preview"
 DEFINITION_FILE="orchestrator/agent-definition.json"
-AGENT_NAME="OpenClawAgentMVP"
+AGENT_NAME="MalgoshaAgentMVP"
 
 # Ensure endpoint has exactly one trailing slash
 OAI_ENDPOINT="${OAI_ENDPOINT%/}/"

@@ -1,7 +1,7 @@
 {
-  "name": "@openclaw/adapter-teams",
+  "name": "@malgosha/adapter-teams",
   "version": "0.1.0",
-  "description": "Microsoft Teams Bot Framework adapter for OpenClaw Agent",
+  "description": "Microsoft Teams Bot Framework adapter for Malgosha Agent",
   "private": true,
   "main": "dist/index.js",
   "scripts": {

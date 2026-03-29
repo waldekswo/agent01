@@ -1,4 +1,4 @@
-metadata description = 'Cosmos DB infrastructure for OpenClaw Agent memory'
+metadata description = 'Cosmos DB infrastructure for Malgosha Agent memory'
 
 param location string
 param cosmosDbAccountName string
@@ -40,10 +40,10 @@ resource cosmosDbAccount 'Microsoft.DocumentDB/databaseAccounts@2023-11-15' = {
 // ============================================================
 resource database 'Microsoft.DocumentDB/databaseAccounts/sqlDatabases@2023-11-15' = {
   parent: cosmosDbAccount
-  name: 'openclaw-db'
+  name: 'malgosha-db'
   properties: {
     resource: {
-      id: 'openclaw-db'
+      id: 'malgosha-db'
     }
   }
 }

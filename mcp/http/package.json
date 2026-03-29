@@ -1,5 +1,5 @@
 {
-  "name": "@openclaw/mcp-http",
+  "name": "@malgosha/mcp-http",
   "version": "0.1.0",
   "description": "MCP Service for safe HTTP requests with allowlist",
   "private": true,

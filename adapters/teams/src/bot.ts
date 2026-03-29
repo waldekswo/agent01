@@ -29,7 +29,7 @@ export class TeamsBot extends TeamsActivityHandler {
 
       for (const member of membersAdded) {
         if (member.id !== recipientId) {
-          await context.sendActivity(`Cześć! Jestem OpenClaw Agent. Jak mogę pomóc?`);
+          await context.sendActivity(`Cześć! Jestem Malgosha. Jak mogę pomóc?`);
         }
       }
       await next();

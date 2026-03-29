@@ -1,6 +1,6 @@
 # Adapter: Telegram
 
-Telegram webhook adapter for OpenClaw Agent. Converts Telegram messages to UMS format.
+Telegram webhook adapter for Malgosha Agent. Converts Telegram messages to UMS format.
 
 ## Setup
 

@@ -35,7 +35,7 @@ services:
       MCP_MEMORY_PORT: 3000
       AZURE_COSMOS_ENDPOINT: http://cosmos-emulator:8081
       AZURE_COSMOS_KEY: C2y6yDjf5/R+ob0N8A7Cgv30VRDJIWEHLM+4QDU5DE2nQ9nDuVTjZgSosaQS+/xQAfCkg4q/gMYHeP1z6f0PE7w==
-      COSMOS_DATABASE: openclaw-db
+      COSMOS_DATABASE: malgosha-db
     depends_on:
       cosmos-emulator:
         condition: service_healthy
@@ -64,7 +64,7 @@ services:
       MCP_GRAPH_PORT: 3000
       AZURE_COSMOS_ENDPOINT: http://cosmos-emulator:8081
       AZURE_COSMOS_KEY: C2y6yDjf5/R+ob0N8A7Cgv30VRDJIWEHLM+4QDU5DE2nQ9nDuVTjZgSosaQS+/xQAfCkg4q/gMYHeP1z6f0PE7w==
-      COSMOS_DATABASE: openclaw-db
+      COSMOS_DATABASE: malgosha-db
     depends_on:
       cosmos-emulator:
         condition: service_healthy
@@ -184,4 +184,4 @@ volumes:
 
 networks:
   default:
-    name: openclaw-network
+    name: malgosha-network

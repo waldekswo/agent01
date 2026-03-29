@@ -3,7 +3,7 @@ import { logger } from '../utils/logger';
 
 const endpoint = process.env.AZURE_COSMOS_ENDPOINT || 'https://localhost:8081';
 const key = process.env.AZURE_COSMOS_KEY || 'C2y6yDjf5/R+ob0N8A7Cgv30VRDJIWEHLM+4QDU5DE2nQ9nDuVTjZgSosaQS+/xQAfCkg4q/gMYHeP1z6f0PE7w==';
-const databaseId = process.env.COSMOS_DATABASE || 'openclaw-db';
+const databaseId = process.env.COSMOS_DATABASE || 'malgosha-db';
 
 let database: any;
 

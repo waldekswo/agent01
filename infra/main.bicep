@@ -1,12 +1,12 @@
 // https://aka.ms/bicep/syntax for more details
-metadata description = 'OpenClaw MVP Agent Infrastructure - Root orchestration'
+metadata description = 'Malgosha Agent Infrastructure - Root orchestration'
 metadata author = 'waldekswo'
 
 param projectName string = 'waldunio-agent01'
 param environment string = 'dev'
 param location string = 'westeurope'
 param tags object = {
-  project: 'OpenClaw-MVP'
+  project: 'Malgosha-MVP'
   environment: environment
   createdBy: 'Bicep'
   createdDate: utcNow('u')

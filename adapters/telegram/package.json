@@ -1,7 +1,7 @@
 {
-  "name": "@openclaw/adapter-telegram",
+  "name": "@malgosha/adapter-telegram",
   "version": "0.1.0",
-  "description": "Telegram webhook adapter for OpenClaw Agent",
+  "description": "Telegram webhook adapter for Malgosha Agent",
   "private": true,
   "main": "dist/index.js",
   "scripts": {

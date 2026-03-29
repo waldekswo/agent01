@@ -36,9 +36,9 @@ git push origin main
 ```bash
 az group list --output table
 az cosmosdb database show \
-  --resource-group rg-openclaw-mvp \
-  --name cosmos-openclaw-mvp-dev \
-  --account-name cosmos-openclaw-mvp-dev
+  --resource-group rg-waldunio-agent01-mvp \
+  --name cosmos-waldunio-agent01-dev \
+  --account-name cosmos-waldunio-agent01-dev
 ```
 
 ## Phase 2: MCP Services (Week 3)
