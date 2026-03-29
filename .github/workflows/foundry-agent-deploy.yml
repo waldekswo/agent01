@@ -159,10 +159,19 @@ jobs:
             --value "$AGENT_ID" \
             --output none
 
+          # Whisper deployment name — use output from Bicep or fallback to default
+          # (Whisper may not be available in all regions — fallback disables STT gracefully)
+          WHISPER_NAME="${{ needs.provision-openai.outputs.whisper_name }}"
+          if [ -z "$WHISPER_NAME" ]; then
+            WHISPER_NAME="waldunio-whisper"
+            echo "⚠️  Whisper deployment name was empty — using fallback: $WHISPER_NAME"
+            echo "    If Whisper is not deployed, voice messages will be gracefully declined."
+          fi
+
           az keyvault secret set \
             --vault-name "$KV_NAME" \
             --name "FOUNDRY-WHISPER-DEPLOYMENT" \
-            --value "${{ needs.provision-openai.outputs.whisper_name }}" \
+            --value "$WHISPER_NAME" \
             --output none
 
           echo "✓ Secrets stored in Key Vault: $KV_NAME"
