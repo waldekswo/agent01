@@ -3,18 +3,21 @@ import { logger } from './logger';
 import { messageToUMS, buttonActionToUMS } from './ums-mapper';
 import { chat } from './agent-client';
 import { transcribeVoice } from './speech-to-text';
+import { synthesizeSpeech } from './text-to-speech';
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Helper: send agent response, attaching Approve/Reject buttons if needed
+// Helper: send agent response, optionally as voice + text caption
 // ─────────────────────────────────────────────────────────────────────────────
 async function sendAgentResponse(
   bot: TelegramBot,
   chatId: number,
   userId: string,
   text: string,
+  replyWithVoice: boolean = false,
 ): Promise<void> {
   const response = await chat(userId, text);
 
+  // When a draft email is pending, always send text with approval buttons
   if (response.pendingDraftId) {
     await bot.sendMessage(chatId, response.text, {
       parse_mode: 'Markdown',
@@ -27,9 +30,28 @@ async function sendAgentResponse(
         ],
       },
     });
-  } else {
-    await bot.sendMessage(chatId, response.text, { parse_mode: 'Markdown' });
+    return;
   }
+
+  // Voice reply: synthesize audio and send as voice message with text as caption
+  if (replyWithVoice) {
+    await bot.sendChatAction(chatId, 'record_voice');
+    const audioBuffer = await synthesizeSpeech(response.text);
+
+    if (audioBuffer) {
+      await bot.sendVoice(
+        chatId,
+        audioBuffer,
+        { caption: response.text, parse_mode: 'Markdown' },
+        { filename: 'response.ogg', contentType: 'audio/ogg' },
+      );
+      return;
+    }
+    // TTS failed — fall through to text reply
+    logger.warn({ userId }, 'TTS failed — falling back to text reply');
+  }
+
+  await bot.sendMessage(chatId, response.text, { parse_mode: 'Markdown' });
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -65,8 +87,8 @@ export async function handleTelegramMessage(bot: TelegramBot, message: any) {
       // 3. Show what was understood (inline, small caps style with italic)
       await bot.sendMessage(chatId, `🎤 _"${transcribed}"_`, { parse_mode: 'Markdown' });
 
-      // 4. Forward transcribed text to agent
-      await sendAgentResponse(bot, chatId, userId, transcribed);
+      // 4. Forward transcribed text to agent — reply with voice
+      await sendAgentResponse(bot, chatId, userId, transcribed, true);
       return;
     }
 
