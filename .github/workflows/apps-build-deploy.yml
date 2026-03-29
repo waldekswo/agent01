@@ -227,12 +227,6 @@ jobs:
 
           echo "WHISPER_DEPLOYMENT=$WHISPER_DEPLOYMENT" >> "$GITHUB_ENV"
 
-          TTS_DEPLOYMENT=$(az keyvault secret show \
-            --vault-name "$KV_NAME" --name "FOUNDRY-TTS-DEPLOYMENT" \
-            --query value -o tsv 2>/dev/null || echo "waldunio-tts")
-
-          echo "TTS_DEPLOYMENT=$TTS_DEPLOYMENT" >> "$GITHUB_ENV"
-
           # ── MCP service FQDNs (used by adapters for internal calls) ─────────
           # These Container Apps are already deployed — fetch their external FQDNs
           for svc in mcp-memory mcp-graph mcp-http mcp-files; do
@@ -306,7 +300,6 @@ jobs:
                   FOUNDRY_AGENT_KEY="$FOUNDRY_KEY" \
                   FOUNDRY_AGENT_ID="$FOUNDRY_ID" \
                   WHISPER_DEPLOYMENT_NAME="$WHISPER_DEPLOYMENT" \
-                  TTS_DEPLOYMENT_NAME="$TTS_DEPLOYMENT" \
                   MCP_MEMORY_URL="$MCP_MEMORY_URL" \
                   MCP_GRAPH_URL="$MCP_GRAPH_URL" \
                   MCP_HTTP_URL="$MCP_HTTP_URL" \
