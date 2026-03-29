@@ -104,6 +104,7 @@ jobs:
       AZURE_RESOURCE_GROUP: ${{ secrets.AZURE_RESOURCE_GROUP || 'rg-waldunio-agent01-mvp' }}
       CONTAINERAPPS_ENV_NAME: ${{ secrets.CONTAINERAPPS_ENV_NAME || 'cae-waldunio-agent01-dev' }}
       COSMOS_DATABASE: openclaw-db
+      KV_NAME: ${{ secrets.KV_NAME || 'kv-waldunio-agent01-buw' }}
 
     strategy:
       matrix:
@@ -112,6 +113,8 @@ jobs:
           - mcp-graph
           - mcp-http
           - mcp-files
+          - adapter-telegram
+          - adapter-teams
 
     steps:
       - name: Checkout
@@ -162,12 +165,43 @@ jobs:
           echo "::add-mask::$COSMOS_KEY"
           echo "::add-mask::$ACR_PASSWORD"
 
-          echo "ACR_NAME=$ACR_NAME" >> "$GITHUB_ENV"
+          echo "ACR_NAME=$ACR_NAME"                 >> "$GITHUB_ENV"
           echo "COSMOS_ACCOUNT_NAME=$COSMOS_ACCOUNT_NAME" >> "$GITHUB_ENV"
-          echo "COSMOS_ENDPOINT=$COSMOS_ENDPOINT" >> "$GITHUB_ENV"
-          echo "COSMOS_KEY=$COSMOS_KEY" >> "$GITHUB_ENV"
-          echo "ACR_USERNAME=$ACR_USERNAME" >> "$GITHUB_ENV"
-          echo "ACR_PASSWORD=$ACR_PASSWORD" >> "$GITHUB_ENV"
+          echo "COSMOS_ENDPOINT=$COSMOS_ENDPOINT"   >> "$GITHUB_ENV"
+          echo "COSMOS_KEY=$COSMOS_KEY"             >> "$GITHUB_ENV"
+          echo "ACR_USERNAME=$ACR_USERNAME"         >> "$GITHUB_ENV"
+          echo "ACR_PASSWORD=$ACR_PASSWORD"         >> "$GITHUB_ENV"
+
+          # ── Foundry Agent secrets from Key Vault (needed by adapters) ───────
+          # Failure is soft — MCP services don't use these vars
+          FOUNDRY_ENDPOINT=$(az keyvault secret show \
+            --vault-name "$KV_NAME" --name "FOUNDRY-AGENT-ENDPOINT" \
+            --query value -o tsv 2>/dev/null || echo "")
+
+          FOUNDRY_KEY=$(az keyvault secret show \
+            --vault-name "$KV_NAME" --name "FOUNDRY-AGENT-KEY" \
+            --query value -o tsv 2>/dev/null || echo "")
+
+          FOUNDRY_ID=$(az keyvault secret show \
+            --vault-name "$KV_NAME" --name "FOUNDRY-AGENT-ID" \
+            --query value -o tsv 2>/dev/null || echo "")
+
+          echo "::add-mask::$FOUNDRY_KEY"
+
+          echo "FOUNDRY_ENDPOINT=$FOUNDRY_ENDPOINT" >> "$GITHUB_ENV"
+          echo "FOUNDRY_KEY=$FOUNDRY_KEY"           >> "$GITHUB_ENV"
+          echo "FOUNDRY_ID=$FOUNDRY_ID"             >> "$GITHUB_ENV"
+
+          # ── MCP service FQDNs (used by adapters for internal calls) ─────────
+          # These Container Apps are already deployed — fetch their external FQDNs
+          for svc in mcp-memory mcp-graph mcp-http mcp-files; do
+            FQDN=$(az containerapp show \
+              --name "$svc" \
+              --resource-group "$AZURE_RESOURCE_GROUP" \
+              --query "properties.configuration.ingress.fqdn" -o tsv 2>/dev/null || echo "")
+            VAR_NAME=$(echo "$svc" | tr '[:lower:]-' '[:upper:]_')_URL
+            echo "${VAR_NAME}=https://${FQDN}" >> "$GITHUB_ENV"
+          done
 
       - name: Deploy to Azure Container Apps
         run: |
@@ -211,6 +245,78 @@ jobs:
                   MCP_FILES_PORT=3000 \
                   MCP_FILES_BASE_PATH=/data/agent
               ;;
+
+            # ── Channel adapters ─────────────────────────────────────────────
+            adapter-telegram)
+              TELEGRAM_BOT_TOKEN="${{ secrets.TELEGRAM_BOT_TOKEN }}"
+              if [ -z "$TELEGRAM_BOT_TOKEN" ]; then
+                echo "⚠️  TELEGRAM_BOT_TOKEN secret not set — adapter will fail to start"
+                echo "    Add it via GitHub → Settings → Secrets → Actions"
+                exit 1
+              fi
+
+              # Deploy with a placeholder PUBLIC_BASE_URL; updated below once FQDN is known
+              az containerapp up $COMMON_ARGS \
+                --env-vars \
+                  NODE_ENV=production \
+                  LOG_LEVEL=info \
+                  TELEGRAM_BOT_TOKEN="$TELEGRAM_BOT_TOKEN" \
+                  FOUNDRY_AGENT_ENDPOINT="$FOUNDRY_ENDPOINT" \
+                  FOUNDRY_AGENT_KEY="$FOUNDRY_KEY" \
+                  FOUNDRY_AGENT_ID="$FOUNDRY_ID" \
+                  MCP_MEMORY_URL="$MCP_MEMORY_URL" \
+                  MCP_GRAPH_URL="$MCP_GRAPH_URL" \
+                  MCP_HTTP_URL="$MCP_HTTP_URL" \
+                  MCP_FILES_URL="$MCP_FILES_URL" \
+                  PUBLIC_BASE_URL="https://placeholder"
+
+              # Now update PUBLIC_BASE_URL with the real FQDN and trigger restart
+              ADAPTER_FQDN=$(az containerapp show \
+                --name adapter-telegram \
+                --resource-group "$AZURE_RESOURCE_GROUP" \
+                --query "properties.configuration.ingress.fqdn" -o tsv)
+
+              az containerapp update \
+                --name adapter-telegram \
+                --resource-group "$AZURE_RESOURCE_GROUP" \
+                --set-env-vars "PUBLIC_BASE_URL=https://${ADAPTER_FQDN}"
+
+              echo "✓ Telegram adapter deployed: https://${ADAPTER_FQDN}"
+              echo "  Webhook will be registered at: https://${ADAPTER_FQDN}/webhook/telegram"
+              ;;
+
+            adapter-teams)
+              TEAMS_APP_ID="${{ secrets.TEAMS_BOT_APP_ID }}"
+              TEAMS_APP_PASSWORD="${{ secrets.TEAMS_BOT_APP_PASSWORD }}"
+              if [ -z "$TEAMS_APP_ID" ] || [ -z "$TEAMS_APP_PASSWORD" ]; then
+                echo "⚠️  TEAMS_BOT_APP_ID / TEAMS_BOT_APP_PASSWORD secrets not set"
+                echo "    Register a Bot in Azure Portal first (see docs/DEPLOYMENT.md)"
+                echo "    Deploying without Teams credentials — bot will NOT authenticate"
+              fi
+
+              az containerapp up $COMMON_ARGS \
+                --env-vars \
+                  NODE_ENV=production \
+                  LOG_LEVEL=info \
+                  TEAMS_BOT_APP_ID="$TEAMS_APP_ID" \
+                  TEAMS_BOT_APP_PASSWORD="$TEAMS_APP_PASSWORD" \
+                  FOUNDRY_AGENT_ENDPOINT="$FOUNDRY_ENDPOINT" \
+                  FOUNDRY_AGENT_KEY="$FOUNDRY_KEY" \
+                  FOUNDRY_AGENT_ID="$FOUNDRY_ID" \
+                  MCP_MEMORY_URL="$MCP_MEMORY_URL" \
+                  MCP_GRAPH_URL="$MCP_GRAPH_URL" \
+                  MCP_HTTP_URL="$MCP_HTTP_URL" \
+                  MCP_FILES_URL="$MCP_FILES_URL"
+
+              ADAPTER_FQDN=$(az containerapp show \
+                --name adapter-teams \
+                --resource-group "$AZURE_RESOURCE_GROUP" \
+                --query "properties.configuration.ingress.fqdn" -o tsv)
+
+              echo "✓ Teams adapter deployed: https://${ADAPTER_FQDN}"
+              echo "  Bot Framework messaging endpoint: https://${ADAPTER_FQDN}/api/messages"
+              ;;
+
             *)
               echo "Unknown service: ${{ matrix.service }}"
               exit 1
@@ -224,7 +330,6 @@ jobs:
             --resource-group "$AZURE_RESOURCE_GROUP" \
             --query properties.configuration.ingress.fqdn -o tsv)
 
-          echo "## MCP Deploy Summary ✅" >> $GITHUB_STEP_SUMMARY
-          echo "- Service: ${{ matrix.service }}" >> $GITHUB_STEP_SUMMARY
+          echo "## Deploy Summary ✅ — ${{ matrix.service }}" >> $GITHUB_STEP_SUMMARY
           echo "- Image: ${ACR_NAME}.azurecr.io/${{ matrix.service }}:latest" >> $GITHUB_STEP_SUMMARY
           echo "- URL: https://$FQDN" >> $GITHUB_STEP_SUMMARY
