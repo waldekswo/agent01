@@ -1,14 +1,86 @@
 name: 'Deploy Foundry Agent'
+
 on:
   push:
     paths:
       - 'orchestrator/**'
+      - 'infra/openai.bicep'
       - '.github/workflows/foundry-agent-deploy.yml'
+    branches:
+      - main
   workflow_dispatch:
 
+env:
+  AZURE_RESOURCE_GROUP: ${{ secrets.AZURE_RESOURCE_GROUP || 'rg-waldunio-agent01-mvp' }}
+  KV_NAME: ${{ secrets.KV_NAME || 'kv-waldunio-agent01-buw' }}
+  PROJECT_NAME: waldunio-agent01
+  LOCATION: westeurope
+  MODEL_DEPLOYMENT_NAME: waldunio-agent-gpt-4o-mvp
+
+# ============================================================
+# JOB 1 — Provision Azure OpenAI resource + gpt-4o deployment
+# ============================================================
 jobs:
-  deploy-agent:
+  provision-openai:
+    name: Provision Azure OpenAI
     runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: read
+
+    outputs:
+      oai_name: ${{ steps.bicep.outputs.oai_name }}
+      oai_endpoint: ${{ steps.bicep.outputs.oai_endpoint }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Azure Login (OIDC)
+        uses: azure/login@v1
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Validate agent config files
+        run: |
+          test -f orchestrator/agent.yaml            && echo "✓ agent.yaml" || exit 1
+          test -f orchestrator/safety.json           && echo "✓ safety.json" || exit 1
+          test -f orchestrator/agent-definition.json && echo "✓ agent-definition.json" || exit 1
+          test -f orchestrator/create-agent.sh       && echo "✓ create-agent.sh" || exit 1
+          jq empty orchestrator/agent-definition.json && echo "✓ agent-definition.json is valid JSON" || exit 1
+
+      - name: Deploy Azure OpenAI (Bicep)
+        id: bicep
+        run: |
+          DEPLOYMENT_NAME="openai-deploy-${{ github.run_id }}"
+
+          echo "Deploying infra/openai.bicep to $AZURE_RESOURCE_GROUP ..."
+          DEPLOYMENT_OUTPUT=$(az deployment group create \
+            --name "$DEPLOYMENT_NAME" \
+            --resource-group "$AZURE_RESOURCE_GROUP" \
+            --template-file infra/openai.bicep \
+            --parameters \
+              projectName="$PROJECT_NAME" \
+              location="$LOCATION" \
+              modelDeploymentName="$MODEL_DEPLOYMENT_NAME" \
+            --output json)
+
+          OAI_NAME=$(echo "$DEPLOYMENT_OUTPUT"     | jq -r '.properties.outputs.openAiName.value')
+          OAI_ENDPOINT=$(echo "$DEPLOYMENT_OUTPUT" | jq -r '.properties.outputs.openAiEndpoint.value')
+
+          echo "oai_name=$OAI_NAME"         >> "$GITHUB_OUTPUT"
+          echo "oai_endpoint=$OAI_ENDPOINT" >> "$GITHUB_OUTPUT"
+          echo "✓ Azure OpenAI deployed: $OAI_NAME  →  $OAI_ENDPOINT"
+
+  # ============================================================
+  # JOB 2 — Create/update the Assistants agent + store secrets
+  # ============================================================
+  create-agent:
+    name: Create / Update Foundry Agent
+    runs-on: ubuntu-latest
+    needs: provision-openai
     permissions:
       id-token: write
       contents: read
@@ -17,37 +89,98 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Azure Login
+      - name: Azure Login (OIDC)
         uses: azure/login@v1
         with:
           client-id: ${{ secrets.AZURE_CLIENT_ID }}
           tenant-id: ${{ secrets.AZURE_TENANT_ID }}
           subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
 
-      - name: Setup azd defaults
+      - name: Get OpenAI API Key
+        id: oai-key
         run: |
-            echo "azd not yet configured - future step"
-            echo "Subscription: ${{ secrets.AZURE_SUBSCRIPTION_ID }}"
+          OAI_NAME="${{ needs.provision-openai.outputs.oai_name }}"
+          API_KEY=$(az cognitiveservices account keys list \
+            --name "$OAI_NAME" \
+            --resource-group "$AZURE_RESOURCE_GROUP" \
+            --query key1 -o tsv)
+          # Mask the key in all future log lines
+          echo "::add-mask::$API_KEY"
+          echo "api_key=$API_KEY" >> "$GITHUB_OUTPUT"
 
-      - name: Initialize/Provision Foundry Agent
+      - name: Create or update Foundry Agent
+        id: agent
         run: |
-          # TODO: Implement azd ai agent workflows
-          echo "TODO: azd ai agent init/provision/deploy"
-          echo "Deployment name: waldunio-agent-gpt-4o-mvp"
+          chmod +x orchestrator/create-agent.sh
+          AGENT_ID=$(orchestrator/create-agent.sh \
+            "${{ needs.provision-openai.outputs.oai_endpoint }}" \
+            "${{ steps.oai-key.outputs.api_key }}")
+          echo "agent_id=$AGENT_ID" >> "$GITHUB_OUTPUT"
+          echo "✓ Agent ID: $AGENT_ID"
 
-      - name: Validate Agent Configuration
+      - name: Grant Key Vault access to deployment SP
         run: |
-          echo "Validating agent.yaml..."
-          test -f orchestrator/agent.yaml && echo "✓ agent.yaml found" || exit 1
-          test -f orchestrator/safety.json && echo "✓ safety.json found" || exit 1
+          # Retrieve the Object ID of the service principal used for OIDC
+          SP_OID=$(az ad sp show --id "${{ secrets.AZURE_CLIENT_ID }}" --query id -o tsv)
+          echo "Granting Key Vault secret permissions to SP: $SP_OID"
+          az keyvault set-policy \
+            --name "$KV_NAME" \
+            --resource-group "$AZURE_RESOURCE_GROUP" \
+            --object-id "$SP_OID" \
+            --secret-permissions get set delete list \
+            --output none
+          echo "✓ KV policy set"
 
-      - name: Create Summary
+      - name: Store agent secrets in Key Vault
         run: |
-          cat >> $GITHUB_STEP_SUMMARY <<EOF
+          OAI_ENDPOINT="${{ needs.provision-openai.outputs.oai_endpoint }}"
+          API_KEY="${{ steps.oai-key.outputs.api_key }}"
+          AGENT_ID="${{ steps.agent.outputs.agent_id }}"
+
+          az keyvault secret set \
+            --vault-name "$KV_NAME" \
+            --name "FOUNDRY-AGENT-ENDPOINT" \
+            --value "$OAI_ENDPOINT" \
+            --output none
+
+          az keyvault secret set \
+            --vault-name "$KV_NAME" \
+            --name "FOUNDRY-AGENT-KEY" \
+            --value "$API_KEY" \
+            --output none
+
+          az keyvault secret set \
+            --vault-name "$KV_NAME" \
+            --name "FOUNDRY-AGENT-ID" \
+            --value "$AGENT_ID" \
+            --output none
+
+          echo "✓ Secrets stored in Key Vault: $KV_NAME"
+          echo "  • FOUNDRY-AGENT-ENDPOINT"
+          echo "  • FOUNDRY-AGENT-KEY"
+          echo "  • FOUNDRY-AGENT-ID"
+
+      - name: Create Job Summary
+        run: |
+          cat >> "$GITHUB_STEP_SUMMARY" << EOF
           ## Foundry Agent Deployment ✅
-          - Configuration: orchestrator/agent.yaml
-          - Guardrails: orchestrator/safety.json
-          - Deployment: waldunio-agent-gpt-4o-mvp
-          
-          TODO: Connect MCP tools (memory, graph, http, files)
+
+          | Property | Value |
+          |----------|-------|
+          | Azure OpenAI Resource | ${{ needs.provision-openai.outputs.oai_name }} |
+          | Endpoint | ${{ needs.provision-openai.outputs.oai_endpoint }} |
+          | Model Deployment | $MODEL_DEPLOYMENT_NAME |
+          | Agent ID | ${{ steps.agent.outputs.agent_id }} |
+          | Key Vault | $KV_NAME |
+
+          ### Secrets stored in Key Vault
+          | Secret Name | Description |
+          |-------------|-------------|
+          | \`FOUNDRY-AGENT-ENDPOINT\` | Azure OpenAI endpoint URL |
+          | \`FOUNDRY-AGENT-KEY\` | Azure OpenAI API key (primary) |
+          | \`FOUNDRY-AGENT-ID\` | Assistants API agent ID (asst_xxx) |
+
+          ### Next step: Etap B
+          Implement adapter → agent connection in \`adapters/telegram/src/handlers.ts\`
+          and \`adapters/teams/src/bot.ts\` using the secrets above.
           EOF
