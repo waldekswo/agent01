@@ -3,6 +3,7 @@ on:
   push:
     paths:
       - 'infra/**'
+      - '!infra/openai.bicep'        # openai.bicep is handled by foundry-agent-deploy.yml
       - '.github/workflows/infra-deploy.yml'
   workflow_dispatch:
 
