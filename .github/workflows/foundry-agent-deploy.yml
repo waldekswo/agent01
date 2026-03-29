@@ -65,14 +65,18 @@ jobs:
               projectName="$PROJECT_NAME" \
               location="$LOCATION" \
               modelDeploymentName="$MODEL_DEPLOYMENT_NAME" \
+              whisperDeploymentName="waldunio-whisper" \
             --output json)
 
-          OAI_NAME=$(echo "$DEPLOYMENT_OUTPUT"     | jq -r '.properties.outputs.openAiName.value')
-          OAI_ENDPOINT=$(echo "$DEPLOYMENT_OUTPUT" | jq -r '.properties.outputs.openAiEndpoint.value')
+          OAI_NAME=$(echo "$DEPLOYMENT_OUTPUT"         | jq -r '.properties.outputs.openAiName.value')
+          OAI_ENDPOINT=$(echo "$DEPLOYMENT_OUTPUT"     | jq -r '.properties.outputs.openAiEndpoint.value')
+          WHISPER_NAME=$(echo "$DEPLOYMENT_OUTPUT"     | jq -r '.properties.outputs.whisperDeploymentName.value')
 
           echo "oai_name=$OAI_NAME"         >> "$GITHUB_OUTPUT"
           echo "oai_endpoint=$OAI_ENDPOINT" >> "$GITHUB_OUTPUT"
+          echo "whisper_name=$WHISPER_NAME" >> "$GITHUB_OUTPUT"
           echo "✓ Azure OpenAI deployed: $OAI_NAME  →  $OAI_ENDPOINT"
+          echo "✓ Whisper deployment: $WHISPER_NAME"
 
   # ============================================================
   # JOB 2 — Create/update the Assistants agent + store secrets
@@ -155,10 +159,17 @@ jobs:
             --value "$AGENT_ID" \
             --output none
 
+          az keyvault secret set \
+            --vault-name "$KV_NAME" \
+            --name "FOUNDRY-WHISPER-DEPLOYMENT" \
+            --value "${{ needs.provision-openai.outputs.whisper_name }}" \
+            --output none
+
           echo "✓ Secrets stored in Key Vault: $KV_NAME"
           echo "  • FOUNDRY-AGENT-ENDPOINT"
           echo "  • FOUNDRY-AGENT-KEY"
           echo "  • FOUNDRY-AGENT-ID"
+          echo "  • FOUNDRY-WHISPER-DEPLOYMENT"
 
       - name: Create Job Summary
         run: |
@@ -179,8 +190,8 @@ jobs:
           | \`FOUNDRY-AGENT-ENDPOINT\` | Azure OpenAI endpoint URL |
           | \`FOUNDRY-AGENT-KEY\` | Azure OpenAI API key (primary) |
           | \`FOUNDRY-AGENT-ID\` | Assistants API agent ID (asst_xxx) |
+          | \`FOUNDRY-WHISPER-DEPLOYMENT\` | Whisper deployment name for STT |
 
-          ### Next step: Etap B
-          Implement adapter → agent connection in \`adapters/telegram/src/handlers.ts\`
-          and \`adapters/teams/src/bot.ts\` using the secrets above.
+          ### Next step: Etap B / C
+          Adapters use FOUNDRY-WHISPER-DEPLOYMENT for Telegram voice messages (speech-to-text).
           EOF

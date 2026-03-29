@@ -192,6 +192,12 @@ jobs:
           echo "FOUNDRY_KEY=$FOUNDRY_KEY"           >> "$GITHUB_ENV"
           echo "FOUNDRY_ID=$FOUNDRY_ID"             >> "$GITHUB_ENV"
 
+          WHISPER_DEPLOYMENT=$(az keyvault secret show \
+            --vault-name "$KV_NAME" --name "FOUNDRY-WHISPER-DEPLOYMENT" \
+            --query value -o tsv 2>/dev/null || echo "waldunio-whisper")
+
+          echo "WHISPER_DEPLOYMENT=$WHISPER_DEPLOYMENT" >> "$GITHUB_ENV"
+
           # ── MCP service FQDNs (used by adapters for internal calls) ─────────
           # These Container Apps are already deployed — fetch their external FQDNs
           for svc in mcp-memory mcp-graph mcp-http mcp-files; do
@@ -264,6 +270,7 @@ jobs:
                   FOUNDRY_AGENT_ENDPOINT="$FOUNDRY_ENDPOINT" \
                   FOUNDRY_AGENT_KEY="$FOUNDRY_KEY" \
                   FOUNDRY_AGENT_ID="$FOUNDRY_ID" \
+                  WHISPER_DEPLOYMENT_NAME="$WHISPER_DEPLOYMENT" \
                   MCP_MEMORY_URL="$MCP_MEMORY_URL" \
                   MCP_GRAPH_URL="$MCP_GRAPH_URL" \
                   MCP_HTTP_URL="$MCP_HTTP_URL" \
