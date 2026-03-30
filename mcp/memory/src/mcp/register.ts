@@ -100,13 +100,14 @@ export function registerMcpTools(app: Express) {
       }
 
       const container = db.container(String(kind));
-      const query = `SELECT * FROM c WHERE c.userId = @userId ORDER BY c.createdAt DESC OFFSET 0 LIMIT @top`;
+      const topN = Math.min(Math.max(parseInt(String(top)) || 100, 1), 100);
+      // OFFSET LIMIT does not support parameterized values — inline the number
+      const query = `SELECT * FROM c WHERE c.userId = @userId ORDER BY c.createdAt DESC OFFSET 0 LIMIT ${topN}`;
 
       const { resources } = await container.items
         .query(query, {
           parameters: [
             { name: '@userId', value: userId },
-            { name: '@top', value: parseInt(String(top)) },
           ],
         })
         .fetchAll();
