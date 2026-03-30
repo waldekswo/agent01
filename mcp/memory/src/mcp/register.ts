@@ -101,13 +101,13 @@ export function registerMcpTools(app: Express) {
 
       const container = db.container(String(kind));
       const topN = Math.min(Math.max(parseInt(String(top)) || 100, 1), 100);
+      // NOTE: parameters must be inside SqlQuerySpec (first arg), not FeedOptions (second arg)
       // OFFSET LIMIT does not support parameterized values — inline the number
-      const query = `SELECT * FROM c WHERE c.userId = @userId ORDER BY c.createdAt DESC OFFSET 0 LIMIT ${topN}`;
-
       const { resources } = await container.items
-        .query(query, {
+        .query({
+          query: `SELECT * FROM c WHERE c.userId = @userId ORDER BY c.createdAt DESC OFFSET 0 LIMIT ${topN}`,
           parameters: [
-            { name: '@userId', value: userId },
+            { name: '@userId', value: String(userId) },
           ],
         })
         .fetchAll();
@@ -130,10 +130,9 @@ export function registerMcpTools(app: Express) {
       }
 
       const container = db.container(kind);
-      const query = `SELECT c.id FROM c WHERE c.createdAt < @date`;
-
       const { resources } = await container.items
-        .query(query, {
+        .query({
+          query: 'SELECT c.id FROM c WHERE c.createdAt < @date',
           parameters: [{ name: '@date', value: olderThan }],
         })
         .fetchAll();
