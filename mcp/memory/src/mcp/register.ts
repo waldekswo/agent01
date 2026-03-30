@@ -137,31 +137,60 @@ export function registerMcpTools(app: Express) {
   // ========== DELETE /memory/prune ==========
   app.delete('/memory/prune', async (req: Request, res: Response) => {
     try {
-      const { kind, olderThan } = req.body;
+      const { kind, olderThan, userId } = req.body;
 
-      if (!kind || !olderThan) {
-        return res.status(400).json({ error: 'Missing kind or olderThan' });
+      if (!kind || !olderThan || !userId) {
+        return res.status(400).json({ error: 'Missing kind, olderThan or userId' });
       }
 
       const container = db.container(kind);
+      // Include userId in SELECT so we have the partition key for deletion
       const { resources } = await container.items
         .query({
-          query: 'SELECT c.id FROM c WHERE c.createdAt < @date',
-          parameters: [{ name: '@date', value: olderThan }],
+          query: 'SELECT c.id, c.userId FROM c WHERE c.userId = @userId AND c.createdAt < @date',
+          parameters: [
+            { name: '@userId', value: userId },
+            { name: '@date', value: olderThan },
+          ],
         })
         .fetchAll();
 
       let deleted = 0;
       for (const item of resources) {
-        await container.item(item.id, item.id).delete();
+        // Partition key is userId, not id
+        await container.item(item.id, item.userId).delete();
         deleted++;
       }
 
-      logger.info({ kind, deleted }, 'Pruned items');
+      logger.info({ kind, userId, deleted }, 'Pruned items');
       res.json({ deleted });
     } catch (error) {
       logger.error({ error }, 'Failed to prune');
       res.status(400).json({ error: 'Prune failed', details: (error as any).message });
+    }
+  });
+
+  // ========== DELETE /memory/fact/:id ==========
+  // Delete a single fact by id + userId (partition key)
+  app.delete('/memory/fact', async (req: Request, res: Response) => {
+    try {
+      const { id, userId } = req.body;
+
+      if (!id || !userId) {
+        return res.status(400).json({ error: 'Missing id or userId' });
+      }
+
+      const container = db.container('facts');
+      await container.item(id, userId).delete();
+
+      logger.info({ id, userId }, 'Fact deleted');
+      res.json({ deleted: true, id });
+    } catch (error: any) {
+      if (error.code === 404) {
+        return res.status(404).json({ error: 'Fact not found', id });
+      }
+      logger.error({ error }, 'Failed to delete fact');
+      res.status(400).json({ error: 'Delete failed', details: error.message });
     }
   });
 }

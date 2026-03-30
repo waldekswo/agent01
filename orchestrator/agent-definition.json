@@ -146,7 +146,7 @@
       "type": "function",
       "function": {
         "name": "memory_prune",
-        "description": "Delete old or irrelevant memory items for a user.",
+        "description": "Delete old or irrelevant memory items for a user older than a given date.",
         "parameters": {
           "type": "object",
           "properties": {
@@ -157,12 +157,33 @@
               "type": "string",
               "enum": ["timeline", "facts", "routines"]
             },
-            "olderThanDays": {
-              "type": "integer",
-              "description": "Delete items older than this many days"
+            "olderThan": {
+              "type": "string",
+              "description": "ISO 8601 date — delete items created before this date, e.g. '2026-01-01T00:00:00Z'"
             }
           },
-          "required": ["userId"]
+          "required": ["userId", "kind", "olderThan"]
+        }
+      }
+    },
+    {
+      "type": "function",
+      "function": {
+        "name": "memory_delete_fact",
+        "description": "Delete a single specific fact by its id. Use memory_query first to find the id of the fact you want to remove. Use this to clean up duplicate, outdated or incorrect facts.",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "id": {
+              "type": "string",
+              "description": "The id of the fact to delete (returned by memory_query in the 'id' field)"
+            },
+            "userId": {
+              "type": "string",
+              "description": "The userId of the fact owner (required for partition key lookup)"
+            }
+          },
+          "required": ["id", "userId"]
         }
       }
     },

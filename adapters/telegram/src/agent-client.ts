@@ -80,6 +80,10 @@ async function dispatchTool(
       url    = `${MCP_MEMORY_URL}/memory/prune`;
       method = 'DELETE';
       break;
+    case 'memory_delete_fact':
+      url    = `${MCP_MEMORY_URL}/memory/fact`;
+      method = 'DELETE';
+      break;
 
     // ── mcp-graph ───────────────────────────────────────────────────────────
     case 'graph_draft_email':
