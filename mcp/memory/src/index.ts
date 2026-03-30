@@ -2,6 +2,7 @@ import express, { Request, Response } from 'express';
 import pinoHttp from 'pino-http';
 import { initializeDatabase, getDatabase } from './db/cosmos';
 import { registerMcpTools } from './mcp/register';
+import { startScheduler } from './scheduler';
 import { logger } from './utils/logger';
 
 const app = express();
@@ -27,6 +28,9 @@ async function startServer() {
     registerMcpTools(app);
     logger.info('MCP tools registered');
 
+    // Start routine scheduler
+    startScheduler();
+
     // Health check endpoint
     app.get('/healthz', (_req: Request, res: Response) => {
       if (dbInitialized) {
@@ -48,6 +52,7 @@ async function startServer() {
           'POST /memory/upsert-routine',
           'GET /memory/query',
           'DELETE /memory/prune',
+          'DELETE /memory/fact',
         ],
       });
     });

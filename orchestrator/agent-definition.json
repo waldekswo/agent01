@@ -80,29 +80,37 @@
       "type": "function",
       "function": {
         "name": "memory_upsert_routine",
-        "description": "Create or update a recurring routine for a user (e.g. daily summary at 08:00).",
+        "description": "Create or update a recurring scheduled routine for a user. A routine is an automatic action executed on a schedule — the scheduler will call the agent with the 'instructions' field as a system prompt and send the generated message to the user. Use this to set up daily reminders, summaries, or any proactive message. The 'name' field uniquely identifies the routine (calling with the same name updates it). Call this immediately without asking for approval.",
         "parameters": {
           "type": "object",
           "properties": {
             "name": {
               "type": "string",
-              "description": "Routine name, e.g. 'daily_summary'"
+              "description": "Unique routine identifier, e.g. 'daily_wedding_update', 'morning_summary'. Use snake_case, no spaces."
             },
             "userId": {
-              "type": "string"
+              "type": "string",
+              "description": "User identifier (channel:id format)"
             },
             "crontab": {
               "type": "string",
-              "description": "Cron expression, e.g. '0 8 * * *' for every day at 08:00"
+              "description": "Cron expression for the schedule. Examples: '0 9 * * *' = every day at 09:00, '0 8 * * MON-FRI' = weekdays at 08:00, '0 20 * * *' = every day at 20:00. Times are in the 'tz' timezone (default Europe/Warsaw)."
             },
-            "window": {
+            "tz": {
               "type": "string",
-              "description": "Time window description, e.g. 'morning'"
+              "description": "Timezone for crontab interpretation. Default 'Europe/Warsaw'. Use IANA timezone names, e.g. 'Europe/Warsaw', 'UTC'."
             },
-            "signals": {
-              "type": "array",
-              "items": { "type": "string" },
-              "description": "Trigger signals for this routine"
+            "instructions": {
+              "type": "string",
+              "description": "What the agent should do each time this routine fires. This becomes the agent's task prompt. Example: 'Przypomnij użytkownikowi o zadaniach do wykonania w projekcie Wesele Iwony. Podsumuj postęp i zaproponuj kolejny krok.' Be specific — the agent will use memory_query to get project data and generate a personalized message."
+            },
+            "projectRef": {
+              "type": "string",
+              "description": "Name of the project this routine is linked to (e.g. 'Wesele Iwony'). The scheduler will include this as context when calling the agent."
+            },
+            "enabled": {
+              "type": "boolean",
+              "description": "Whether the routine is active. Default true. Set false to pause."
             },
             "confidence": {
               "type": "number",
@@ -110,7 +118,7 @@
               "maximum": 1
             }
           },
-          "required": ["name", "userId"]
+          "required": ["name", "userId", "crontab", "instructions"]
         }
       }
     },

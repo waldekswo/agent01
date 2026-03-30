@@ -1,5 +1,6 @@
 import { Express, Request, Response } from 'express';
 import { v4 as uuid } from 'uuid';
+import { parseExpression } from 'cron-parser';
 import { getDatabase } from '../db/cosmos';
 import { logger } from '../utils/logger';
 import { z } from 'zod';
@@ -24,6 +25,17 @@ const FactSchema = z.object({
   evidenceIds: z.array(z.string()).optional(),
   confidence: z.number().min(0).max(1).default(0.9),
   userId: z.string(),
+});
+
+const RoutineSchema = z.object({
+  name: z.string(),
+  userId: z.string(),
+  crontab: z.string().default('0 9 * * *'),
+  tz: z.string().default('Europe/Warsaw'),
+  instructions: z.string().default(''),
+  projectRef: z.string().default(''),
+  enabled: z.boolean().default(true),
+  confidence: z.number().min(0).max(1).default(0.8),
 });
 
 // ============================================================
@@ -100,6 +112,65 @@ export function registerMcpTools(app: Express) {
       res.json({ id: factId, updated: isUpdate });
     } catch (error) {
       logger.error({ error }, 'Failed to upsert fact');
+      res.status(400).json({ error: 'Invalid request', details: (error as any).message });
+    }
+  });
+
+  // ========== POST /memory/upsert-routine ==========
+  app.post('/memory/upsert-routine', async (req: Request, res: Response) => {
+    try {
+      const data = RoutineSchema.parse(req.body);
+      const container = db.container('routines');
+
+      // True upsert by name + userId
+      const { resources: existing } = await container.items
+        .query({
+          query: 'SELECT * FROM c WHERE c.userId = @userId AND c.name = @name',
+          parameters: [
+            { name: '@userId', value: data.userId },
+            { name: '@name', value: data.name },
+          ],
+        })
+        .fetchAll();
+
+      const isUpdate = existing.length > 0;
+      const routineId = isUpdate ? existing[0].id : uuid();
+
+      // Compute next run from crontab + timezone
+      let nextRun: string;
+      try {
+        nextRun = parseExpression(data.crontab, { tz: data.tz }).next().toDate().toISOString();
+      } catch {
+        // Fallback: tomorrow 09:00 Warsaw time (UTC+2 offset approx)
+        const tomorrow = new Date();
+        tomorrow.setUTCDate(tomorrow.getUTCDate() + 1);
+        tomorrow.setUTCHours(7, 0, 0, 0); // 09:00 Warsaw = 07:00 UTC
+        nextRun = tomorrow.toISOString();
+      }
+
+      const routine = {
+        id: routineId,
+        name: data.name,
+        userId: data.userId,
+        crontab: data.crontab,
+        tz: data.tz,
+        instructions: data.instructions,
+        projectRef: data.projectRef,
+        enabled: data.enabled,
+        confidence: data.confidence,
+        // Keep existing nextRun if updating (avoid resetting a pending trigger)
+        nextRun: isUpdate ? (existing[0].nextRun || nextRun) : nextRun,
+        lastRun: isUpdate ? (existing[0].lastRun || null) : null,
+        createdAt: isUpdate ? existing[0].createdAt : new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      };
+
+      await container.items.upsert(routine);
+
+      logger.info({ routineId, name: data.name, nextRun: routine.nextRun, isUpdate }, 'Routine upserted');
+      res.json({ id: routineId, updated: isUpdate, nextRun: routine.nextRun });
+    } catch (error) {
+      logger.error({ error }, 'Failed to upsert routine');
       res.status(400).json({ error: 'Invalid request', details: (error as any).message });
     }
   });

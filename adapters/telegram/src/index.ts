@@ -3,6 +3,7 @@ import TelegramBot from 'node-telegram-bot-api';
 import pinoHttp from 'pino-http';
 import { logger } from './logger';
 import { handleTelegramMessage, handleCallbackQuery } from './handlers';
+import { chat } from './agent-client';
 
 const app = express();
 const PORT = process.env.ADAPTER_TELEGRAM_PORT || 3000;
@@ -52,6 +53,37 @@ app.get('/', (_req: Request, res: Response) => {
     status: 'ready',
     webhook: `${PUBLIC_BASE_URL}/webhook/telegram`,
   });
+});
+
+// ============================================================
+// Internal push endpoint — called by mcp-memory routine scheduler
+// Lets the scheduler trigger the agent to proactively send a message
+// NOTE: accessible only within the Container Apps environment (internal)
+// ============================================================
+app.post('/internal/push', async (req: Request, res: Response) => {
+  try {
+    const { userId, instructions } = req.body as { userId?: string; instructions?: string };
+
+    if (!userId || !instructions) {
+      return res.status(400).json({ error: 'Missing userId or instructions' });
+    }
+
+    // Extract numeric chatId from 'telegram:12345678' format
+    const chatId = userId.split(':')[1];
+    if (!chatId || !/^\d+$/.test(chatId)) {
+      return res.status(400).json({ error: 'Invalid userId format (expected telegram:<chatId>)' });
+    }
+
+    // Run agent with routine instructions — agent will query memory, build the message
+    const agentResponse = await chat(userId, instructions);
+    await bot.sendMessage(chatId, agentResponse.text, { parse_mode: 'Markdown' });
+
+    logger.info({ userId, chatId }, 'Internal push delivered');
+    res.json({ delivered: true, userId });
+  } catch (error) {
+    logger.error({ error }, 'Internal push failed');
+    res.status(500).json({ error: 'Push failed', details: (error as Error).message });
+  }
 });
 
 // ============================================================
