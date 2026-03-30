@@ -13,7 +13,7 @@ const MCP_HTTP_URL    = process.env.MCP_HTTP_URL   || 'http://mcp-http';
 const MCP_FILES_URL   = process.env.MCP_FILES_URL  || 'http://mcp-files';
 
 const POLL_INTERVAL_MS = 700;
-const MAX_POLLS        = 100; // ~70 s max per run
+const MAX_POLLS        = 150; // ~105 s max per run
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Thread store — persists conversation threads per userId in memory.
@@ -133,7 +133,7 @@ async function dispatchTool(
     });
 
     const data = await res.json().catch(() => ({ status: res.status }));
-    logger.info({ toolName, status: res.status }, 'MCP tool dispatch OK');
+    logger.info({ toolName, status: res.status, args }, 'MCP tool dispatch OK');
 
     // Capture draftId when agent creates an email draft
     if (toolName === 'graph_draft_email' && (data as any).draftId) {
