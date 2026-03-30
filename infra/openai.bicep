@@ -74,11 +74,10 @@ resource modelDeployment 'Microsoft.CognitiveServices/accounts/deployments@2024-
 resource whisperDeployment 'Microsoft.CognitiveServices/accounts/deployments@2024-04-01-preview' = {
   parent: openAi
   name: whisperDeploymentName
-  // Whisper must be deployed after GPT-4o (single deployment slot limit on some SKUs)
   dependsOn: [modelDeployment]
   sku: {
-    name: 'Standard'
-    capacity: 1 // 1 concurrent request — sufficient for voice messages (sequential)
+    name: 'GlobalStandard'
+    capacity: 1
   }
   properties: {
     model: {
@@ -99,7 +98,7 @@ resource ttsDeployment 'Microsoft.CognitiveServices/accounts/deployments@2024-04
   name: ttsDeploymentName
   dependsOn: [whisperDeployment]
   sku: {
-    name: 'Standard'
+    name: 'GlobalStandard'
     capacity: 1
   }
   properties: {
