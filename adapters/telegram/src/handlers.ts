@@ -70,8 +70,8 @@ export async function handleTelegramMessage(bot: TelegramBot, message: any) {
       // 1. Get the download URL from Telegram
       const fileLink = await bot.getFileLink(message.voice.file_id);
 
-      // 2. Transcribe with Whisper
-      const locale = message.from?.language_code ?? undefined;
+      // 2. Transcribe with Whisper — default to Polish, override if user explicitly uses another language
+      const locale = message.from?.language_code ?? 'pl';
       const transcribed = await transcribeVoice(fileLink, locale);
 
       if (!transcribed) {
@@ -84,8 +84,8 @@ export async function handleTelegramMessage(bot: TelegramBot, message: any) {
 
       logger.info({ userId, transcribed }, 'Voice transcribed — forwarding to agent');
 
-      // 3. Show what was understood (inline, small caps style with italic)
-      await bot.sendMessage(chatId, `🎤 _"${transcribed}"_`, { parse_mode: 'Markdown' });
+      // 3. Show what was understood in Polish label
+      await bot.sendMessage(chatId, `🎤 _Rozumiem: "${transcribed}"_`, { parse_mode: 'Markdown' });
 
       // 4. Forward transcribed text to agent — reply with voice
       await sendAgentResponse(bot, chatId, userId, transcribed, true);
