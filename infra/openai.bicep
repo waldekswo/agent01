@@ -15,9 +15,9 @@ param modelVersion string = '2024-11-20'
 // Whisper deployment name — used by adapter-telegram for speech-to-text
 param whisperDeploymentName string = 'waldunio-whisper'
 
-// NOTE: tts-1 is NOT available in West Europe — TTS is disabled.
-// Available regions: East US, Sweden Central, North Central US.
-// If you move the OpenAI resource to a supported region, re-add the tts deployment.
+// TTS deployment name — used by adapter-telegram for text-to-speech replies
+// tts-1 is available in Poland Central, Sweden Central, East US, North Central US
+param ttsDeploymentName string = 'waldunio-tts'
 
 // Resource name – derived from projectName + uniqueString to ensure global uniqueness
 var openAiName = 'oai-${projectName}-${substring(uniqueString(resourceGroup().id), 0, 6)}'
@@ -90,6 +90,28 @@ resource whisperDeployment 'Microsoft.CognitiveServices/accounts/deployments@202
 }
 
 // ============================================================
+// TTS Model Deployment (text-to-speech for voice replies)
+// tts-1 is available in Poland Central — enables full voice conversation
+// ============================================================
+resource ttsDeployment 'Microsoft.CognitiveServices/accounts/deployments@2024-04-01-preview' = {
+  parent: openAi
+  name: ttsDeploymentName
+  dependsOn: [whisperDeployment]
+  sku: {
+    name: 'Standard'
+    capacity: 1
+  }
+  properties: {
+    model: {
+      format: 'OpenAI'
+      name: 'tts'
+      version: '001'
+    }
+    versionUpgradeOption: 'OnceCurrentVersionExpired'
+  }
+}
+
+// ============================================================
 // OUTPUTS (consumed by foundry-agent-deploy.yml)
 // ============================================================
 output openAiEndpoint string = openAi.properties.endpoint
@@ -97,3 +119,4 @@ output openAiName string = openAi.name
 output openAiResourceId string = openAi.id
 output modelDeploymentName string = modelDeployment.name
 output whisperDeploymentName string = whisperDeployment.name
+output ttsDeploymentName string = ttsDeployment.name

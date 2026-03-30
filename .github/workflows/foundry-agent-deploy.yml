@@ -14,7 +14,7 @@ env:
   AZURE_RESOURCE_GROUP: ${{ secrets.AZURE_RESOURCE_GROUP || 'rg-waldunio-agent01-mvp' }}
   KV_NAME: ${{ secrets.KV_NAME || 'kv-waldunio-agent01-buw' }}
   PROJECT_NAME: waldunio-agent01
-  LOCATION: westeurope
+  LOCATION: polandcentral
   MODEL_DEPLOYMENT_NAME: waldunio-agent-gpt-4o-mvp
 
 # ============================================================
@@ -32,6 +32,7 @@ jobs:
       oai_name: ${{ steps.bicep.outputs.oai_name }}
       oai_endpoint: ${{ steps.bicep.outputs.oai_endpoint }}
       whisper_name: ${{ steps.bicep.outputs.whisper_name }}
+      tts_name: ${{ steps.bicep.outputs.tts_name }}
 
     steps:
       - name: Checkout
@@ -67,17 +68,21 @@ jobs:
               location="$LOCATION" \
               modelDeploymentName="$MODEL_DEPLOYMENT_NAME" \
               whisperDeploymentName="waldunio-whisper" \
+              ttsDeploymentName="waldunio-tts" \
             --output json)
 
           OAI_NAME=$(echo "$DEPLOYMENT_OUTPUT"         | jq -r '.properties.outputs.openAiName.value')
           OAI_ENDPOINT=$(echo "$DEPLOYMENT_OUTPUT"     | jq -r '.properties.outputs.openAiEndpoint.value')
           WHISPER_NAME=$(echo "$DEPLOYMENT_OUTPUT"     | jq -r '.properties.outputs.whisperDeploymentName.value')
+          TTS_NAME=$(echo "$DEPLOYMENT_OUTPUT"         | jq -r '.properties.outputs.ttsDeploymentName.value')
 
           echo "oai_name=$OAI_NAME"         >> "$GITHUB_OUTPUT"
           echo "oai_endpoint=$OAI_ENDPOINT" >> "$GITHUB_OUTPUT"
           echo "whisper_name=$WHISPER_NAME" >> "$GITHUB_OUTPUT"
+          echo "tts_name=$TTS_NAME"         >> "$GITHUB_OUTPUT"
           echo "✓ Azure OpenAI deployed: $OAI_NAME  →  $OAI_ENDPOINT"
           echo "✓ Whisper deployment: $WHISPER_NAME"
+          echo "✓ TTS deployment: $TTS_NAME"
 
   # ============================================================
   # JOB 2 — Create/update the Assistants agent + store secrets
@@ -175,11 +180,23 @@ jobs:
             --value "$WHISPER_NAME" \
             --output none
 
+          TTS_NAME="${{ needs.provision-openai.outputs.tts_name }}"
+          if [ -z "$TTS_NAME" ]; then
+            TTS_NAME="waldunio-tts"
+          fi
+
+          az keyvault secret set \
+            --vault-name "$KV_NAME" \
+            --name "FOUNDRY-TTS-DEPLOYMENT" \
+            --value "$TTS_NAME" \
+            --output none
+
           echo "✓ Secrets stored in Key Vault: $KV_NAME"
           echo "  • FOUNDRY-AGENT-ENDPOINT"
           echo "  • FOUNDRY-AGENT-KEY"
           echo "  • FOUNDRY-AGENT-ID"
           echo "  • FOUNDRY-WHISPER-DEPLOYMENT"
+          echo "  • FOUNDRY-TTS-DEPLOYMENT"
 
       - name: Create Job Summary
         run: |

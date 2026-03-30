@@ -7,8 +7,6 @@ import { logger } from './logger';
 const AGENT_ENDPOINT  = process.env.FOUNDRY_AGENT_ENDPOINT || '';
 const AGENT_KEY       = process.env.FOUNDRY_AGENT_KEY      || '';
 const TTS_DEPLOYMENT  = process.env.TTS_DEPLOYMENT_NAME    || 'waldunio-tts';
-
-// Telegram sendVoice requires OGG Opus format — 'opus' response_format produces that
 const TTS_RESPONSE_FORMAT = 'opus' as const;
 
 // Voice character — 'alloy' is neutral and clear; alternatives: nova, echo, fable, onyx, shimmer
