@@ -39,19 +39,36 @@ async function sendAgentResponse(
     const audioBuffer = await synthesizeSpeech(response.text);
 
     if (audioBuffer) {
-      await bot.sendVoice(
-        chatId,
-        audioBuffer,
-        { caption: response.text, parse_mode: 'Markdown' },
-        { filename: 'response.ogg', contentType: 'audio/ogg' },
-      );
+      try {
+        await bot.sendVoice(
+          chatId,
+          audioBuffer,
+          { caption: response.text, parse_mode: 'Markdown' },
+          { filename: 'response.ogg', contentType: 'audio/ogg' },
+        );
+      } catch {
+        // Telegram rejected Markdown in caption — retry without formatting
+        logger.warn({ userId }, 'sendVoice with Markdown failed — retrying without parse_mode');
+        await bot.sendVoice(
+          chatId,
+          audioBuffer,
+          { caption: response.text },
+          { filename: 'response.ogg', contentType: 'audio/ogg' },
+        );
+      }
       return;
     }
     // TTS failed — fall through to text reply
     logger.warn({ userId }, 'TTS failed — falling back to text reply');
   }
 
-  await bot.sendMessage(chatId, response.text, { parse_mode: 'Markdown' });
+  try {
+    await bot.sendMessage(chatId, response.text, { parse_mode: 'Markdown' });
+  } catch {
+    // Telegram rejected Markdown — retry without formatting
+    logger.warn({ userId }, 'sendMessage with Markdown failed — retrying without parse_mode');
+    await bot.sendMessage(chatId, response.text);
+  }
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
