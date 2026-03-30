@@ -173,9 +173,8 @@ export function registerMcpTools(app: Express) {
   // ========== DELETE /memory/fact/:id ==========
   // Delete a single fact by id + userId (partition key)
   app.delete('/memory/fact', async (req: Request, res: Response) => {
+    const { id, userId } = req.body as { id?: string; userId?: string };
     try {
-      const { id, userId } = req.body;
-
       if (!id || !userId) {
         return res.status(400).json({ error: 'Missing id or userId' });
       }
