@@ -65,7 +65,22 @@ export function registerMcpTools(app: Express) {
   app.post('/memory/upsert-fact', async (req: Request, res: Response) => {
     try {
       const data = FactSchema.parse(req.body);
-      const factId = uuid();
+      const container = db.container('facts');
+
+      // Look up existing fact by subject + predicate + userId (true upsert semantics)
+      const { resources: existing } = await container.items
+        .query({
+          query: 'SELECT * FROM c WHERE c.userId = @userId AND c.subject = @subject AND c.predicate = @predicate',
+          parameters: [
+            { name: '@userId', value: data.userId },
+            { name: '@subject', value: data.subject },
+            { name: '@predicate', value: data.predicate },
+          ],
+        })
+        .fetchAll();
+
+      const isUpdate = existing.length > 0;
+      const factId = isUpdate ? existing[0].id : uuid();
 
       const fact = {
         id: factId,
@@ -75,15 +90,14 @@ export function registerMcpTools(app: Express) {
         evidenceIds: data.evidenceIds || [],
         confidence: data.confidence,
         userId: data.userId,
-        createdAt: new Date().toISOString(),
+        createdAt: isUpdate ? existing[0].createdAt : new Date().toISOString(),
         updatedAt: new Date().toISOString(),
       };
 
-      const container = db.container('facts');
-      const { resource } = await container.items.upsert(fact);
+      await container.items.upsert(fact);
 
-      logger.info({ factId, subject: data.subject }, 'Fact upserted');
-      res.json({ id: factId, updated: true });
+      logger.info({ factId, subject: data.subject, predicate: data.predicate, isUpdate }, 'Fact upserted');
+      res.json({ id: factId, updated: isUpdate });
     } catch (error) {
       logger.error({ error }, 'Failed to upsert fact');
       res.status(400).json({ error: 'Invalid request', details: (error as any).message });
