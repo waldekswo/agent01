@@ -70,8 +70,8 @@ export async function handleTelegramMessage(bot: TelegramBot, message: any) {
       // 1. Get the download URL from Telegram
       const fileLink = await bot.getFileLink(message.voice.file_id);
 
-      // 2. Transcribe with Whisper — default to Polish, override if user explicitly uses another language
-      const locale = message.from?.language_code ?? 'pl';
+      // 2. Transcribe with Whisper — always hint Polish; Whisper will auto-detect if audio is another language
+      const locale = 'pl';
       const transcribed = await transcribeVoice(fileLink, locale);
 
       if (!transcribed) {
