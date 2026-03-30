@@ -14,7 +14,7 @@ env:
   AZURE_RESOURCE_GROUP: ${{ secrets.AZURE_RESOURCE_GROUP || 'rg-waldunio-agent01-mvp' }}
   KV_NAME: ${{ secrets.KV_NAME || 'kv-waldunio-agent01-buw' }}
   PROJECT_NAME: waldunio-agent01
-  LOCATION: polandcentral
+  LOCATION: swedencentral
   MODEL_DEPLOYMENT_NAME: waldunio-agent-gpt-4o-mvp
 
 # ============================================================

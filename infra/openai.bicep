@@ -13,8 +13,6 @@ param modelDeploymentName string = 'waldunio-agent-gpt-4o-mvp'
 param modelVersion string = '2024-11-20'
 
 // Whisper deployment name — used by adapter-telegram for speech-to-text
-// Note: whisper-001 does not support Standard or GlobalStandard in Poland Central.
-// Using gpt-4o-mini-transcribe (2025-03-20) which is available via GlobalStandard in all regions.
 param whisperDeploymentName string = 'waldunio-whisper'
 
 // TTS deployment name — used by adapter-telegram for text-to-speech replies
@@ -78,14 +76,14 @@ resource whisperDeployment 'Microsoft.CognitiveServices/accounts/deployments@202
   name: whisperDeploymentName
   dependsOn: [modelDeployment]
   sku: {
-    name: 'GlobalStandard'
+    name: 'Standard'
     capacity: 1
   }
   properties: {
     model: {
       format: 'OpenAI'
-      name: 'gpt-4o-mini-transcribe'
-      version: '2025-03-20'
+      name: 'whisper'
+      version: '001'
     }
     versionUpgradeOption: 'OnceCurrentVersionExpired'
   }
