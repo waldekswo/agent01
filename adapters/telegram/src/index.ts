@@ -22,24 +22,29 @@ app.use(pinoHttp({ logger }));
 
 // ============================================================
 // Webhook endpoint for Telegram
+// Respond with 200 IMMEDIATELY — Telegram retries if we don't answer within
+// 60 s, which would cause duplicate processing for long agent runs.
 // ============================================================
-app.post('/webhook/telegram', async (req: Request, res: Response) => {
-  try {
-    const update = req.body as any;
+app.post('/webhook/telegram', (req: Request, res: Response) => {
+  // Acknowledge immediately so Telegram never retries this update
+  res.status(200).send('OK');
 
-    if (update.message) {
-      await handleTelegramMessage(bot, update.message);
-    } else if (update.callback_query) {
-      await handleCallbackQuery(bot, update.callback_query);
-    } else {
-      logger.warn({ update }, 'Unknown update type');
+  const update = req.body as any;
+
+  // Fire-and-forget — errors are caught internally
+  (async () => {
+    try {
+      if (update.message) {
+        await handleTelegramMessage(bot, update.message);
+      } else if (update.callback_query) {
+        await handleCallbackQuery(bot, update.callback_query);
+      } else {
+        logger.warn({ updateKeys: Object.keys(update) }, 'Unknown update type');
+      }
+    } catch (error) {
+      logger.error({ error }, 'Failed to handle webhook update');
     }
-
-    res.status(200).send('OK');
-  } catch (error) {
-    logger.error({ error }, 'Failed to handle webhook');
-    res.status(500).json({ error: 'Internal Server Error' });
-  }
+  })();
 });
 
 app.get('/healthz', (_req: Request, res: Response) => {
