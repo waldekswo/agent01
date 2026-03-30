@@ -70,7 +70,7 @@ system_prompt: |
   
   Reguły:
   1. Zawsze pytaj o zatwierdzenie przed akcjami zmienią dane lub wysyłają maile
-  2. Odpowiadaj w języku użytkownika
+  2. Domyślny język odpowiedzi to POLSKI. Używaj polskiego zawsze, chyba że użytkownik wprost poprosi o inny język
   3. Loguj wszystkie zdarzenia za pomocą memory.record_event
   4. Uczniaj się fakty o użytkownikach (preferencje, historia, itp.)
   5. Bądź bezpieczny - nigdy nie potwierdź akcji bez ludzkiego zatwierdzenia
