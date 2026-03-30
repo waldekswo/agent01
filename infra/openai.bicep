@@ -19,8 +19,9 @@ param whisperDeploymentName string = 'waldunio-whisper'
 // tts-1 is available in Poland Central, Sweden Central, East US, North Central US
 param ttsDeploymentName string = 'waldunio-tts'
 
-// Resource name – derived from projectName + uniqueString to ensure global uniqueness
-var openAiName = 'oai-${projectName}-${substring(uniqueString(resourceGroup().id), 0, 6)}'
+// Resource name – derived from projectName + location + uniqueString to ensure global uniqueness
+// Including location in the name avoids conflict when migrating regions on existing resource groups
+var openAiName = 'oai-${projectName}-${substring(uniqueString(resourceGroup().id, location), 0, 6)}'
 
 // ============================================================
 // Azure OpenAI Account
