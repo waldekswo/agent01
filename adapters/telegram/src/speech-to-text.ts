@@ -67,35 +67,46 @@ export async function transcribeVoice(
     return null;
   }
 
-  // ── 2. Transcribe with Azure OpenAI Whisper ──────────────────────────────
-  try {
-    const client = buildWhisperClient();
+  // ── 2. Transcribe with Azure OpenAI Whisper (up to 2 attempts) ──────────
+  const MAX_ATTEMPTS = 2;
+  let lastErr: unknown;
 
-    const audioFile = await toFile(audioBuffer, AUDIO_FILENAME, { type: AUDIO_MIME });
+  for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
+    try {
+      const client = buildWhisperClient();
 
-    const transcription = await client.audio.transcriptions.create({
-      file: audioFile,
-      model: WHISPER_DEPLOYMENT,
-      // Provide language hint if available — reduces hallucination on short clips
-      ...(locale ? { language: locale } : {}),
-      response_format: 'text',
-    });
+      const audioFile = await toFile(audioBuffer, AUDIO_FILENAME, { type: AUDIO_MIME });
 
-    // Azure response_format:'text' returns the string directly (SDK wraps as .text)
-    const text =
-      typeof transcription === 'string'
-        ? transcription.trim()
-        : (transcription as any).text?.trim() ?? '';
+      const transcription = await client.audio.transcriptions.create({
+        file: audioFile,
+        model: WHISPER_DEPLOYMENT,
+        // Provide language hint if available — reduces hallucination on short clips
+        ...(locale ? { language: locale } : {}),
+        response_format: 'text',
+      });
 
-    if (!text) {
-      logger.warn('Whisper returned empty transcription');
-      return null;
+      // Azure response_format:'text' returns the string directly (SDK wraps as .text)
+      const text =
+        typeof transcription === 'string'
+          ? transcription.trim()
+          : (transcription as any).text?.trim() ?? '';
+
+      if (!text) {
+        logger.warn('Whisper returned empty transcription');
+        return null;
+      }
+
+      logger.info({ chars: text.length, locale, attempt }, 'Voice transcription complete');
+      return text;
+    } catch (err) {
+      lastErr = err;
+      logger.warn({ err, deployment: WHISPER_DEPLOYMENT, attempt }, 'Whisper transcription attempt failed');
+      if (attempt < MAX_ATTEMPTS) {
+        await new Promise(resolve => setTimeout(resolve, 1500));
+      }
     }
-
-    logger.info({ chars: text.length, locale }, 'Voice transcription complete');
-    return text;
-  } catch (err) {
-    logger.error({ err, deployment: WHISPER_DEPLOYMENT }, 'Whisper transcription failed');
-    return null;
   }
+
+  logger.error({ err: lastErr, deployment: WHISPER_DEPLOYMENT }, 'Whisper transcription failed after all attempts');
+  return null;
 }
