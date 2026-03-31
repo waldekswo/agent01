@@ -105,7 +105,7 @@ async function consolidateUser(userId: string): Promise<void> {
 
     let consolidateReport = { deleted: 0, remaining: 0, total: 0 };
     if (consolidateRes.ok) {
-      consolidateReport = await consolidateRes.json();
+      consolidateReport = await consolidateRes.json() as typeof consolidateReport;
       logger.info({ userId, ...consolidateReport }, 'Programmatic consolidation complete');
     } else {
       logger.warn({ userId, status: consolidateRes.status }, 'Programmatic consolidation failed');
