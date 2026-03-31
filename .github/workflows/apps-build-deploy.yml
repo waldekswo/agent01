@@ -259,7 +259,6 @@ jobs:
           case "${{ matrix.service }}" in
             mcp-memory)
               az containerapp up $COMMON_ARGS \
-                --min-replicas 1 \
                 --env-vars \
                   NODE_ENV=production \
                   LOG_LEVEL=info \
@@ -269,6 +268,11 @@ jobs:
                   COSMOS_DATABASE="$COSMOS_DATABASE" \
                   ADAPTER_TELEGRAM_URL="$ADAPTER_TELEGRAM_URL" \
                   MCP_MEMORY_URL="$MCP_MEMORY_URL"
+              # Keep at least 1 replica so the in-process scheduler never gets killed by scale-to-zero
+              az containerapp update \
+                --name mcp-memory \
+                --resource-group "$AZURE_RESOURCE_GROUP" \
+                --min-replicas 1
               ;;
             mcp-graph)
               az containerapp up $COMMON_ARGS \
