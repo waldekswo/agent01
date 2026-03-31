@@ -55,7 +55,7 @@ resource modelDeployment 'Microsoft.CognitiveServices/accounts/deployments@2024-
   sku: {
     // GlobalStandard: best availability & higher limits; available in West Europe
     name: 'GlobalStandard'
-    capacity: 10 // 10 000 tokens-per-minute; increase if needed
+    capacity: 30 // 30 000 tokens-per-minute
   }
   properties: {
     model: {
