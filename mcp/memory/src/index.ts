@@ -50,6 +50,7 @@ async function startServer() {
           'POST /memory/record-event',
           'POST /memory/upsert-fact',
           'POST /memory/upsert-routine',
+          'POST /memory/consolidate',
           'GET /memory/query',
           'DELETE /memory/prune',
           'DELETE /memory/fact',

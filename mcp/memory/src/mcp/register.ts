@@ -241,6 +241,75 @@ export function registerMcpTools(app: Express) {
     }
   });
 
+  // ========== POST /memory/consolidate ==========
+  // Scan all facts for a user:
+  //  1. Remove exact duplicates (same subject+predicate+object)
+  //  2. When multiple facts share subject+predicate, keep the newest; delete the rest
+  //  3. Return a report of what was deleted
+  app.post('/memory/consolidate', async (req: Request, res: Response) => {
+    try {
+      const { userId } = req.body as { userId?: string };
+      if (!userId) {
+        return res.status(400).json({ error: 'Missing userId' });
+      }
+
+      const container = db.container('facts');
+      const { resources: allFacts } = await container.items
+        .query({
+          query: 'SELECT * FROM c WHERE c.userId = @userId ORDER BY c.updatedAt DESC',
+          parameters: [{ name: '@userId', value: userId }],
+        })
+        .fetchAll();
+
+      // Group by subject+predicate — keep the first (newest) in each group
+      const seen = new Map<string, any>();
+      const toDelete: { id: string; userId: string; reason: string }[] = [];
+
+      for (const fact of allFacts) {
+        const key = `${fact.subject}||${fact.predicate}`;
+        if (seen.has(key)) {
+          // Duplicate — keep newest (already in map), delete this one
+          toDelete.push({ id: fact.id, userId: fact.userId, reason: 'duplicate subject+predicate' });
+        } else {
+          seen.set(key, fact);
+        }
+      }
+
+      // Also flag exact value duplicates within the survivors (same subject+predicate+object)
+      const valueKeys = new Set<string>();
+      for (const [key, fact] of seen.entries()) {
+        const valueKey = `${key}||${JSON.stringify(fact.object)}`;
+        if (valueKeys.has(valueKey)) {
+          toDelete.push({ id: fact.id, userId: fact.userId, reason: 'exact duplicate value' });
+          seen.delete(key);
+        } else {
+          valueKeys.add(valueKey);
+        }
+      }
+
+      let deleted = 0;
+      for (const item of toDelete) {
+        try {
+          await container.item(item.id, item.userId).delete();
+          deleted++;
+        } catch (err: any) {
+          if (err.code !== 404) throw err; // already gone — ignore
+        }
+      }
+
+      logger.info({ userId, total: allFacts.length, deleted, remaining: allFacts.length - deleted }, 'Facts consolidated');
+      res.json({
+        total: allFacts.length,
+        deleted,
+        remaining: allFacts.length - deleted,
+        removedIds: toDelete.map(d => ({ id: d.id, reason: d.reason })),
+      });
+    } catch (error) {
+      logger.error({ error }, 'Failed to consolidate facts');
+      res.status(500).json({ error: 'Consolidation failed', details: (error as any).message });
+    }
+  });
+
   // ========== DELETE /memory/fact/:id ==========
   // Delete a single fact by id + userId (partition key)
   app.delete('/memory/fact', async (req: Request, res: Response) => {
