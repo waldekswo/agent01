@@ -244,6 +244,13 @@ jobs:
             echo "${VAR_NAME}=https://${FQDN}" >> "$GITHUB_ENV"
           done
 
+          # Also fetch adapter-telegram FQDN so mcp-memory scheduler can push notifications
+          ADAPTER_TELEGRAM_FQDN=$(az containerapp show \
+            --name adapter-telegram \
+            --resource-group "$AZURE_RESOURCE_GROUP" \
+            --query "properties.configuration.ingress.fqdn" -o tsv 2>/dev/null || echo "")
+          echo "ADAPTER_TELEGRAM_URL=https://${ADAPTER_TELEGRAM_FQDN}" >> "$GITHUB_ENV"
+
       - name: Deploy to Azure Container Apps
         run: |
           IMAGE="${ACR_NAME}.azurecr.io/${{ matrix.service }}:latest"
@@ -252,13 +259,16 @@ jobs:
           case "${{ matrix.service }}" in
             mcp-memory)
               az containerapp up $COMMON_ARGS \
+                --min-replicas 1 \
                 --env-vars \
                   NODE_ENV=production \
                   LOG_LEVEL=info \
                   MCP_MEMORY_PORT=3000 \
                   AZURE_COSMOS_ENDPOINT="$COSMOS_ENDPOINT" \
                   AZURE_COSMOS_KEY="$COSMOS_KEY" \
-                  COSMOS_DATABASE="$COSMOS_DATABASE"
+                  COSMOS_DATABASE="$COSMOS_DATABASE" \
+                  ADAPTER_TELEGRAM_URL="$ADAPTER_TELEGRAM_URL" \
+                  MCP_MEMORY_URL="$MCP_MEMORY_URL"
               ;;
             mcp-graph)
               az containerapp up $COMMON_ARGS \
