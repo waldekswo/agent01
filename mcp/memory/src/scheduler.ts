@@ -103,7 +103,7 @@ async function consolidateUser(userId: string): Promise<void> {
       body: JSON.stringify({ userId }),
     });
 
-    let consolidateReport = { deleted: 0, remaining: 0 };
+    let consolidateReport = { deleted: 0, remaining: 0, total: 0 };
     if (consolidateRes.ok) {
       consolidateReport = await consolidateRes.json();
       logger.info({ userId, ...consolidateReport }, 'Programmatic consolidation complete');
@@ -111,17 +111,36 @@ async function consolidateUser(userId: string): Promise<void> {
       logger.warn({ userId, status: consolidateRes.status }, 'Programmatic consolidation failed');
     }
 
-    // 2. Ask the agent to semantically review, reorganise and report on the knowledge base
+    const today = new Date().toLocaleDateString('pl-PL', { day: 'numeric', month: 'long', year: 'numeric' });
+
+    // 2. Ask the agent to semantically review, clean up, then send a structured memory report
     const instructions = [
-      `[Nocna konsolidacja wiedzy — ${new Date().toLocaleDateString('pl-PL')}]`,
-      `Właśnie zakończyłem automatyczne usuwanie duplikatów (usunięto ${consolidateReport.deleted} wpisów, pozostało ${consolidateReport.remaining}).`,
-      `Twoje zadanie:`,
-      `1. Wywołaj memory_query(kind='facts', userId='${userId}') aby zobaczyć całą bazę wiedzy.`,
-      `2. Przejrzyj wszystkie fakty. Jeśli zauważysz semantyczne duplikaty lub sprzeczne informacje (np. dwie różne wartości dla tego samego tematu), usuń gorszy wpis przez memory_delete_fact i zachowaj bardziej aktualny/dokładny.`,
-      `3. Jeśli jakiś fakt jest nieprecyzyjny lub niepełny, zaktualizuj go przez memory_upsert_fact z dokładniejszą wartością.`,
-      `4. Nie wysyłaj żadnej wiadomości do użytkownika — to jest ciche zadanie tła. Pracuj cicho.`,
-      `5. Po zakończeniu wywołaj memory_record_event(type='knowledge_consolidation', payload={deleted_programmatic: ${consolidateReport.deleted}, reviewed: true}).`,
-    ].join(' ');
+      `[Nocna reorganizacja pamięci — ${today}]`,
+      `Krok 1 — deduplikacja programatyczna już gotowa: usunięto ${consolidateReport.deleted} technicznych duplikatów, w bazie pozostało ${consolidateReport.remaining} wpisów.`,
+      `Krok 2 — Twoje zadanie (wykonaj po kolei):`,
+      `A) Wywołaj memory_query(kind='facts', userId='${userId}') — pobierz WSZYSTKIE fakty.`,
+      `B) Przejrzyj je wszystkie. Usuń semantyczne duplikaty (memory_delete_fact) i popraw nieprecyzyjne wpisy (memory_upsert_fact). Policz ile usunąłeś/zmieniłeś.`,
+      `C) Wywołaj memory_record_event(type='knowledge_consolidation', payload={deleted_programmatic: ${consolidateReport.deleted}, reviewed: true}).`,
+      `D) NA KOŃCU wyślij użytkownikowi RAPORT w dokładnie tym formacie (wypełnij prawdziwymi danymi z bazy):`,
+      `---`,
+      `📊 *Nocna reorganizacja pamięci — ${today}*`,
+      ``,
+      `🧹 *Co się zmieniło:*`,
+      `• Technicznie usunięte duplikaty: ${consolidateReport.deleted}`,
+      `• Semantycznie poprawione/usunięte: [WSTAW LICZBĘ]`,
+      `• Łączna liczba wpisów w bazie: [WSTAW LICZBĘ]`,
+      ``,
+      `🗂️ *Aktualna mapa wiedzy:*`,
+      `[Dla każdego unikalnego TEMATU (subject) z memory_query wymień go jako sekcję z emoji pasującym do tematu, a pod nim — listę kluczowych predykatów/wartości. Np:]`,
+      `👤 *Ja* — imię, wiek, stanowisko, firma, [inne dane osobowe]`,
+      `🏢 *Praca* — team leader, projekty, zadania, ...`,
+      `⚙️ *Preferencje* — język, styl, nawyki, ...`,
+      `[itd. dla każdego tematu który faktycznie jest w bazie]`,
+      ``,
+      `💡 *Podsumowanie:* [1-2 zdania co wiesz o użytkowniku i jak dobrze zorganizowana jest baza]`,
+      `---`,
+      `WAŻNE: Raport wyślij PO wykonaniu kroków A/B/C. Używaj prawdziwych danych z memory_query — nie wymyślaj.`,
+    ].join('\n');
 
     const pushRes = await fetch(`${ADAPTER_TELEGRAM_URL}/internal/push`, {
       method: 'POST',
