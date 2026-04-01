@@ -81,7 +81,14 @@ app.post('/internal/push', async (req: Request, res: Response) => {
 
     // Run agent with routine instructions — agent will query memory, build the message
     const agentResponse = await chat(userId, instructions);
-    await bot.sendMessage(chatId, agentResponse.text, { parse_mode: 'Markdown' });
+
+    // Retry without Markdown if Telegram rejects formatting (same pattern as sendAgentResponse)
+    try {
+      await bot.sendMessage(chatId, agentResponse.text, { parse_mode: 'Markdown' });
+    } catch {
+      logger.warn({ userId, chatId }, 'Internal push: sendMessage with Markdown failed — retrying without parse_mode');
+      await bot.sendMessage(chatId, agentResponse.text);
+    }
 
     logger.info({ userId, chatId }, 'Internal push delivered');
     res.json({ delivered: true, userId });
