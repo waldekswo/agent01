@@ -178,7 +178,7 @@ export async function chat(userId: string, text: string): Promise<AgentResponse>
   // Inject userId so the agent can use it consistently for all memory tool calls
   const run = await client.beta.threads.runs.create(threadId, {
     assistant_id: AGENT_ID,
-    additional_instructions: `Aktualny userId użytkownika to: "${userId}". Używaj DOKŁADNIE tej wartości we wszystkich wywołaniach narzędzi memory (memory_query, memory_upsert_fact, memory_record_event, memory_upsert_routine, memory_prune).`,
+    additional_instructions: `Aktualna data i czas (UTC): ${new Date().toISOString()}. Aktualny userId użytkownika to: "${userId}". Używaj DOKŁADNIE tej wartości we wszystkich wywołaniach narzędzi memory (memory_query, memory_upsert_fact, memory_record_event, memory_upsert_routine, memory_prune).`,
   });
 
   // ── Poll loop ──────────────────────────────────────────────────────────────
